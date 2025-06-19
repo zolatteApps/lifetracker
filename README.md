@@ -1,46 +1,62 @@
-# Getting Started with Create React App
+# LifeSync - Personal Life Management App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Overview
+LifeSync is a comprehensive life management application that helps you track and achieve your goals across four key areas:
+- 🏃 Physical Health
+- 🧠 Mental Wellbeing
+- 💰 Financial Goals
+- 👥 Social Connections
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+### 1. Goal Setting & Onboarding
+- Simple two-question onboarding process
+- Automatic categorization of goals into the four life areas
+- AI-powered action plan generation
 
-### `npm start`
+### 2. Dashboard
+- Visual progress tracking for each category
+- Interactive action items with priority levels
+- Real-time progress updates
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### 3. Daily Schedule
+- Automated schedule generation based on your goals
+- Time-blocked activities from 7 AM to 10 PM
+- Visual current time indicator
+- Click to mark activities as complete
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### 4. Check-in System
+- Regular check-ins (every 30-60 minutes)
+- Mood tracking
+- Task completion review
+- Reflection notes
 
-### `npm test`
+## How to Use
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. **Start the App**: Run `npm start` in the terminal
+2. **Complete Onboarding**: Answer the two questions about your goals and aspirations
+3. **View Dashboard**: See your categorized goals with action items
+4. **Check Schedule**: Click "View Schedule" to see your daily plan
+5. **Regular Check-ins**: Use the check-in feature to track progress throughout the day
 
-### `npm run build`
+## Technical Details
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Built with React and TypeScript
+- Styled with Tailwind CSS
+- Local storage for data persistence
+- Responsive design for all devices
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Running the App
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+# Install dependencies
+npm install
 
-### `npm run eject`
+# Start development server
+npm start
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+# Build for production
+npm run build
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+The app will open at http://localhost:3000
