@@ -3,6 +3,7 @@ import { UserProfile, Goal } from '../../types';
 import { processGoals } from '../../utils/goalProcessor';
 import CategoryCard from './CategoryCard';
 import Schedule from '../Schedule/Schedule';
+import DailySchedule from '../Schedule/DailySchedule';
 import CheckInModal from '../CheckIn/CheckInModal';
 import { Calendar, Target, BarChart3, Clock } from 'lucide-react';
 
@@ -121,14 +122,19 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {goals.map(goal => (
-            <CategoryCard
-              key={goal.id}
-              goal={goal}
-              onUpdateProgress={updateGoalProgress}
-            />
-          ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {goals.map(goal => (
+              <CategoryCard
+                key={goal.id}
+                goal={goal}
+                onUpdateProgress={updateGoalProgress}
+              />
+            ))}
+          </div>
+          <div className="lg:col-span-1">
+            <DailySchedule goals={goals} />
+          </div>
         </div>
       </main>
 

@@ -29,17 +29,23 @@ export const processGoals = (goalsText: string, achievementsText: string): Goal[
 
   const goals: Goal[] = [];
   
-  Object.entries(categorizedGoals).forEach(([category, items]) => {
-    if (items.length > 0) {
-      goals.push({
-        id: `goal-${category}`,
-        category: category as 'physical' | 'mental' | 'financial' | 'social',
-        title: getCategoryTitle(category),
-        description: items.join('. '),
-        actionItems: generateActionItems(category, items),
-        progress: 0
-      });
-    }
+  // Always create goals for all categories
+  const allCategories = ['physical', 'mental', 'financial', 'social'];
+  
+  allCategories.forEach(category => {
+    const items = categorizedGoals[category];
+    const description = items.length > 0 
+      ? items.join('. ') 
+      : getDefaultDescription(category);
+    
+    goals.push({
+      id: `goal-${category}`,
+      category: category as 'physical' | 'mental' | 'financial' | 'social',
+      title: getCategoryTitle(category),
+      description: description,
+      actionItems: generateActionItems(category, items),
+      progress: 0
+    });
   });
 
   return goals;
@@ -53,6 +59,16 @@ const getCategoryTitle = (category: string): string => {
     social: 'Social & Relationships'
   };
   return titles[category] || category;
+};
+
+const getDefaultDescription = (category: string): string => {
+  const defaults: { [key: string]: string } = {
+    physical: 'Build a strong, healthy body through regular exercise and proper nutrition',
+    mental: 'Develop mental resilience and maintain emotional wellbeing',
+    financial: 'Achieve financial stability and build wealth for the future',
+    social: 'Build meaningful relationships and maintain social connections'
+  };
+  return defaults[category] || 'Set goals for this category';
 };
 
 const generateActionItems = (category: string, items: string[]): ActionItem[] => {
