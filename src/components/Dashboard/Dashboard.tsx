@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, Goal } from '../../types';
-import { processGoals } from '../../utils/goalProcessor';
 import CategoryCard from './CategoryCard';
-import Schedule from '../Schedule/Schedule';
 import DailySchedule from '../Schedule/DailySchedule';
 import CheckInModal from '../CheckIn/CheckInModal';
+import GoalModal from '../Goals/GoalModal';
 import { Calendar, Target, BarChart3, Clock } from 'lucide-react';
 
 interface DashboardProps {
@@ -15,19 +14,23 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'physical' | 'mental' | 'financial' | 'social'>('physical');
   const [lastCheckIn, setLastCheckIn] = useState<Date | null>(null);
 
   useEffect(() => {
-    const processedGoals = processGoals(userProfile.goals, userProfile.achievements);
-    setGoals(processedGoals);
-    
-    const savedGoals = localStorage.getItem('goals');
+    const savedGoals = localStorage.getItem('userGoals');
     if (savedGoals) {
-      setGoals(JSON.parse(savedGoals));
-    } else {
-      localStorage.setItem('goals', JSON.stringify(processedGoals));
+      const parsedGoals = JSON.parse(savedGoals);
+      // Convert date strings back to Date objects
+      const goalsWithDates = parsedGoals.map((goal: any) => ({
+        ...goal,
+        createdAt: new Date(goal.createdAt),
+        ...(goal.dueDate && { dueDate: new Date(goal.dueDate) })
+      }));
+      setGoals(goalsWithDates);
     }
-  }, [userProfile]);
+  }, []);
 
   useEffect(() => {
     const checkInInterval = setInterval(() => {
@@ -40,23 +43,43 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
     return () => clearInterval(checkInInterval);
   }, [lastCheckIn]);
 
-  const updateGoalProgress = (goalId: string, actionItemId: string) => {
-    const updatedGoals = goals.map(goal => {
-      if (goal.id === goalId) {
-        const updatedActionItems = goal.actionItems.map(item =>
-          item.id === actionItemId ? { ...item, completed: !item.completed } : item
-        );
-        const completedCount = updatedActionItems.filter(item => item.completed).length;
-        const progress = Math.round((completedCount / updatedActionItems.length) * 100);
-        
-        return { ...goal, actionItems: updatedActionItems, progress };
-      }
-      return goal;
-    });
-    
+  const saveGoals = (updatedGoals: Goal[]) => {
     setGoals(updatedGoals);
-    localStorage.setItem('goals', JSON.stringify(updatedGoals));
+    localStorage.setItem('userGoals', JSON.stringify(updatedGoals));
   };
+
+  const handleAddGoal = (category: 'physical' | 'mental' | 'financial' | 'social') => {
+    setSelectedCategory(category);
+    setShowGoalModal(true);
+  };
+
+  const handleSaveGoal = (goalData: Omit<Goal, 'id' | 'createdAt'>) => {
+    const newGoal: Goal = {
+      ...goalData,
+      id: Date.now().toString(),
+      createdAt: new Date()
+    };
+    
+    const updatedGoals = [...goals, newGoal];
+    saveGoals(updatedGoals);
+  };
+
+  const handleUpdateGoal = (goalId: string, updates: Partial<Goal>) => {
+    const updatedGoals = goals.map(goal =>
+      goal.id === goalId ? { ...goal, ...updates } : goal
+    );
+    saveGoals(updatedGoals);
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    const updatedGoals = goals.filter(goal => goal.id !== goalId);
+    saveGoals(updatedGoals);
+  };
+
+  const getGoalsByCategory = (category: 'physical' | 'mental' | 'financial' | 'social') => {
+    return goals.filter(goal => goal.category === category);
+  };
+
 
   const handleCheckInComplete = () => {
     setShowCheckIn(false);
@@ -96,39 +119,62 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Your Progress Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {goals.map(goal => (
-              <div key={goal.id} className="bg-white p-4 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600">{goal.title}</span>
-                  <BarChart3 className="w-4 h-4 text-gray-400" />
-                </div>
-                <div className="flex items-center">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
-                    <div
-                      className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${goal.progress}%` }}
-                    />
+            {(['physical', 'mental', 'financial', 'social'] as const).map(category => {
+              const categoryGoals = getGoalsByCategory(category);
+              const categoryProgress = categoryGoals.length > 0 
+                ? Math.round(categoryGoals.reduce((sum, goal) => sum + goal.progress, 0) / categoryGoals.length)
+                : 0;
+              
+              const getCategoryTitle = (cat: string) => {
+                switch (cat) {
+                  case 'physical': return 'Physical Health';
+                  case 'mental': return 'Mental Health';
+                  case 'financial': return 'Financial Goals';
+                  case 'social': return 'Social Relationships';
+                  default: return cat;
+                }
+              };
+
+              return (
+                <div key={category} className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">{getCategoryTitle(category)}</span>
+                    <BarChart3 className="w-4 h-4 text-gray-400" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">{goal.progress}%</span>
+                  <div className="flex items-center">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                      <div
+                        className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${categoryProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">{categoryProgress}%</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {showSchedule && (
           <div className="mb-8">
-            <Schedule goals={goals} />
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Schedule View</h3>
+              <p className="text-gray-600">Schedule generation is being updated to work with the new goal system.</p>
+            </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {goals.map(goal => (
+            {(['physical', 'mental', 'financial', 'social'] as const).map(category => (
               <CategoryCard
-                key={goal.id}
-                goal={goal}
-                onUpdateProgress={updateGoalProgress}
+                key={category}
+                category={category}
+                goals={getGoalsByCategory(category)}
+                onAddGoal={handleAddGoal}
+                onUpdateGoal={handleUpdateGoal}
+                onDeleteGoal={handleDeleteGoal}
               />
             ))}
           </div>
@@ -144,6 +190,13 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
           onClose={handleCheckInComplete}
         />
       )}
+
+      <GoalModal
+        isOpen={showGoalModal}
+        onClose={() => setShowGoalModal(false)}
+        onSave={handleSaveGoal}
+        category={selectedCategory}
+      />
     </div>
   );
 };

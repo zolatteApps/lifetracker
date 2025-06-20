@@ -3,8 +3,20 @@ export interface Goal {
   category: 'physical' | 'mental' | 'financial' | 'social';
   title: string;
   description: string;
-  actionItems: ActionItem[];
+  type: 'milestone' | 'numeric' | 'habit';
+  priority: 'high' | 'medium' | 'low';
   progress: number;
+  targetValue?: number;
+  currentValue?: number;
+  unit?: string;
+  dueDate?: Date;
+  completed: boolean;
+  createdAt: Date;
+}
+
+export interface CategoryGoals {
+  category: 'physical' | 'mental' | 'financial' | 'social';
+  goals: Goal[];
 }
 
 export interface ActionItem {

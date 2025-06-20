@@ -69,30 +69,31 @@ const CheckInModal: React.FC<CheckInModalProps> = ({ goals, onClose }) => {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">What have you accomplished?</h3>
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">What goals have you made progress on?</h3>
             <div className="space-y-2 max-h-40 overflow-y-auto">
-              {goals.map(goal => (
-                <div key={goal.id} className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600">{goal.title}</p>
-                  {goal.actionItems.filter(item => item.completed).map(item => (
-                    <label key={item.id} className="flex items-center p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100">
-                      <input
-                        type="checkbox"
-                        checked={completedTasks.includes(item.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setCompletedTasks([...completedTasks, item.id]);
-                          } else {
-                            setCompletedTasks(completedTasks.filter(id => id !== item.id));
-                          }
-                        }}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">{item.title}</span>
-                    </label>
-                  ))}
-                </div>
+              {goals.filter(goal => !goal.completed).map(goal => (
+                <label key={goal.id} className="flex items-center p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={completedTasks.includes(goal.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setCompletedTasks([...completedTasks, goal.id]);
+                      } else {
+                        setCompletedTasks(completedTasks.filter(id => id !== goal.id));
+                      }
+                    }}
+                    className="mr-2"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-700">{goal.title}</span>
+                    <div className="text-xs text-gray-500 capitalize">{goal.category} • {goal.type} goal</div>
+                  </div>
+                </label>
               ))}
+              {goals.filter(goal => !goal.completed).length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">No active goals to track progress on.</p>
+              )}
             </div>
           </div>
 

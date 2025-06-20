@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Goal } from '../../types';
-import { Clock, Check, Coffee, Briefcase, Dumbbell, Brain, DollarSign, Users, Moon, Sun, Utensils } from 'lucide-react';
+import { Clock, Check, Coffee, Briefcase, Dumbbell, Brain, DollarSign, Users, Moon, Sun, Utensils, Settings, X } from 'lucide-react';
 
 interface DailyScheduleProps {
   goals: Goal[];
@@ -17,28 +17,16 @@ interface TimeBlock {
 }
 
 const DailySchedule: React.FC<DailyScheduleProps> = ({ goals }) => {
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([
-    { id: 'wake', time: '6:00 AM', activity: 'Wake up & Morning hydration', category: 'routine', icon: <Sun className="w-4 h-4" />, duration: 15 },
-    { id: 'exercise', time: '6:15 AM', activity: 'Morning exercise & stretching', category: 'physical', icon: <Dumbbell className="w-4 h-4" />, duration: 45 },
-    { id: 'shower', time: '7:00 AM', activity: 'Shower & get ready', category: 'routine', icon: <Coffee className="w-4 h-4" />, duration: 30 },
-    { id: 'breakfast', time: '7:30 AM', activity: 'Healthy breakfast', category: 'meal', icon: <Utensils className="w-4 h-4" />, duration: 30 },
-    { id: 'meditation', time: '8:00 AM', activity: 'Meditation & journaling', category: 'mental', icon: <Brain className="w-4 h-4" />, duration: 20 },
-    { id: 'work1', time: '8:30 AM', activity: 'Deep work block 1', category: 'work', icon: <Briefcase className="w-4 h-4" />, duration: 120 },
-    { id: 'break1', time: '10:30 AM', activity: 'Short break & snack', category: 'routine', icon: <Coffee className="w-4 h-4" />, duration: 15 },
-    { id: 'work2', time: '10:45 AM', activity: 'Deep work block 2', category: 'work', icon: <Briefcase className="w-4 h-4" />, duration: 105 },
-    { id: 'lunch', time: '12:30 PM', activity: 'Lunch break', category: 'meal', icon: <Utensils className="w-4 h-4" />, duration: 45 },
-    { id: 'social', time: '1:15 PM', activity: 'Connect with friends/family', category: 'social', icon: <Users className="w-4 h-4" />, duration: 30 },
-    { id: 'work3', time: '1:45 PM', activity: 'Afternoon work session', category: 'work', icon: <Briefcase className="w-4 h-4" />, duration: 120 },
-    { id: 'break2', time: '3:45 PM', activity: 'Afternoon break', category: 'routine', icon: <Coffee className="w-4 h-4" />, duration: 15 },
-    { id: 'financial', time: '4:00 PM', activity: 'Review finances & budget', category: 'financial', icon: <DollarSign className="w-4 h-4" />, duration: 30 },
-    { id: 'work4', time: '4:30 PM', activity: 'Wrap up work tasks', category: 'work', icon: <Briefcase className="w-4 h-4" />, duration: 90 },
-    { id: 'exercise2', time: '6:00 PM', activity: 'Evening walk or light exercise', category: 'physical', icon: <Dumbbell className="w-4 h-4" />, duration: 30 },
-    { id: 'dinner', time: '6:30 PM', activity: 'Dinner', category: 'meal', icon: <Utensils className="w-4 h-4" />, duration: 45 },
-    { id: 'family', time: '7:15 PM', activity: 'Family time / Hobbies', category: 'social', icon: <Users className="w-4 h-4" />, duration: 90 },
-    { id: 'relax', time: '8:45 PM', activity: 'Relaxation & reading', category: 'mental', icon: <Brain className="w-4 h-4" />, duration: 45 },
-    { id: 'prepare', time: '9:30 PM', activity: 'Prepare for tomorrow', category: 'routine', icon: <Moon className="w-4 h-4" />, duration: 20 },
-    { id: 'sleep', time: '10:00 PM', activity: 'Bedtime routine & sleep', category: 'routine', icon: <Moon className="w-4 h-4" />, duration: 480 },
-  ]);
+  const [showScheduleSettings, setShowScheduleSettings] = useState(false);
+  const [wakeUpTime, setWakeUpTime] = useState(() => {
+    const saved = localStorage.getItem('scheduleWakeUpTime');
+    return saved || '06:00';
+  });
+  const [sleepTime, setSleepTime] = useState(() => {
+    const saved = localStorage.getItem('scheduleSleepTime');
+    return saved || '22:00';
+  });
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
 
   const toggleCompleted = (id: string) => {
     setTimeBlocks(blocks =>
@@ -93,6 +81,109 @@ const DailySchedule: React.FC<DailyScheduleProps> = ({ goals }) => {
 
   const currentBlockId = getCurrentTimeBlock();
 
+  const convertTimeToMinutes = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const convertMinutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+  };
+
+  const adjustScheduleToTimes = useCallback((wakeTime: string, bedTime: string) => {
+    const wakeMinutes = convertTimeToMinutes(wakeTime);
+    const bedMinutes = convertTimeToMinutes(bedTime);
+    const totalAwakeMinutes = bedMinutes > wakeMinutes ? 
+      bedMinutes - wakeMinutes : 
+      (24 * 60) - wakeMinutes + bedMinutes;
+
+    const originalBlocks = [
+      { id: 'wake', activity: 'Wake up & Morning hydration', category: 'routine' as const, icon: <Sun className="w-4 h-4" />, duration: 15, priority: 1 },
+      { id: 'exercise', activity: 'Morning exercise & stretching', category: 'physical' as const, icon: <Dumbbell className="w-4 h-4" />, duration: 45, priority: 2 },
+      { id: 'shower', activity: 'Shower & get ready', category: 'routine' as const, icon: <Coffee className="w-4 h-4" />, duration: 30, priority: 2 },
+      { id: 'breakfast', activity: 'Healthy breakfast', category: 'meal' as const, icon: <Utensils className="w-4 h-4" />, duration: 30, priority: 2 },
+      { id: 'meditation', activity: 'Meditation & journaling', category: 'mental' as const, icon: <Brain className="w-4 h-4" />, duration: 20, priority: 3 },
+      { id: 'work1', activity: 'Deep work block 1', category: 'work' as const, icon: <Briefcase className="w-4 h-4" />, duration: 120, priority: 4 },
+      { id: 'break1', activity: 'Short break & snack', category: 'routine' as const, icon: <Coffee className="w-4 h-4" />, duration: 15, priority: 5 },
+      { id: 'work2', activity: 'Deep work block 2', category: 'work' as const, icon: <Briefcase className="w-4 h-4" />, duration: 105, priority: 5 },
+      { id: 'lunch', activity: 'Lunch break', category: 'meal' as const, icon: <Utensils className="w-4 h-4" />, duration: 45, priority: 6 },
+      { id: 'social', activity: 'Connect with friends/family', category: 'social' as const, icon: <Users className="w-4 h-4" />, duration: 30, priority: 7 },
+      { id: 'work3', activity: 'Afternoon work session', category: 'work' as const, icon: <Briefcase className="w-4 h-4" />, duration: 120, priority: 7 },
+      { id: 'break2', activity: 'Afternoon break', category: 'routine' as const, icon: <Coffee className="w-4 h-4" />, duration: 15, priority: 8 },
+      { id: 'financial', activity: 'Review finances & budget', category: 'financial' as const, icon: <DollarSign className="w-4 h-4" />, duration: 30, priority: 8 },
+      { id: 'work4', activity: 'Wrap up work tasks', category: 'work' as const, icon: <Briefcase className="w-4 h-4" />, duration: 90, priority: 8 },
+      { id: 'exercise2', activity: 'Evening walk or light exercise', category: 'physical' as const, icon: <Dumbbell className="w-4 h-4" />, duration: 30, priority: 9 },
+      { id: 'dinner', activity: 'Dinner', category: 'meal' as const, icon: <Utensils className="w-4 h-4" />, duration: 45, priority: 9 },
+      { id: 'family', activity: 'Family time / Hobbies', category: 'social' as const, icon: <Users className="w-4 h-4" />, duration: 90, priority: 10 },
+      { id: 'relax', activity: 'Relaxation & reading', category: 'mental' as const, icon: <Brain className="w-4 h-4" />, duration: 45, priority: 11 },
+      { id: 'prepare', activity: 'Prepare for tomorrow', category: 'routine' as const, icon: <Moon className="w-4 h-4" />, duration: 20, priority: 12 },
+      { id: 'sleep', activity: 'Bedtime routine & sleep', category: 'routine' as const, icon: <Moon className="w-4 h-4" />, duration: 30, priority: 13 },
+    ];
+
+    const totalOriginalDuration = originalBlocks.reduce((sum, block) => sum + block.duration, 0);
+    const scaleFactor = Math.min(1, (totalAwakeMinutes - 30) / totalOriginalDuration);
+    
+    let currentTime = wakeMinutes;
+    const adjustedBlocks: TimeBlock[] = [];
+
+    originalBlocks.forEach(block => {
+      if (block.id === 'sleep') {
+        const adjustedBlock = {
+          ...block,
+          time: convertMinutesToTime(bedMinutes - 30),
+          duration: 30
+        };
+        adjustedBlocks.push(adjustedBlock);
+      } else {
+        const adjustedDuration = Math.max(
+          block.category === 'meal' ? 20 : 10,
+          Math.round(block.duration * scaleFactor)
+        );
+        
+        const adjustedBlock = {
+          ...block,
+          time: convertMinutesToTime(currentTime),
+          duration: adjustedDuration
+        };
+        
+        adjustedBlocks.push(adjustedBlock);
+        currentTime += adjustedDuration;
+        
+        if (currentTime >= bedMinutes - 30) {
+          return;
+        }
+      }
+    });
+
+    return adjustedBlocks;
+  }, []);
+
+  const applyScheduleChanges = () => {
+    localStorage.setItem('scheduleWakeUpTime', wakeUpTime);
+    localStorage.setItem('scheduleSleepTime', sleepTime);
+    
+    const newSchedule = adjustScheduleToTimes(wakeUpTime, sleepTime);
+    setTimeBlocks(newSchedule);
+    setShowScheduleSettings(false);
+  };
+
+  useEffect(() => {
+    const savedWakeTime = localStorage.getItem('scheduleWakeUpTime');
+    const savedSleepTime = localStorage.getItem('scheduleSleepTime');
+    
+    if (savedWakeTime && savedSleepTime) {
+      const adjustedSchedule = adjustScheduleToTimes(savedWakeTime, savedSleepTime);
+      setTimeBlocks(adjustedSchedule);
+    } else {
+      const defaultSchedule = adjustScheduleToTimes('06:00', '22:00');
+      setTimeBlocks(defaultSchedule);
+    }
+  }, [adjustScheduleToTimes]);
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
@@ -100,8 +191,17 @@ const DailySchedule: React.FC<DailyScheduleProps> = ({ goals }) => {
           <Clock className="w-6 h-6 mr-2 text-indigo-600" />
           Daily Schedule
         </h2>
-        <div className="text-sm text-gray-500">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowScheduleSettings(true)}
+            className="flex items-center px-3 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
+          >
+            <Settings className="w-4 h-4 mr-1" />
+            Schedule Settings
+          </button>
+          <div className="text-sm text-gray-500">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </div>
         </div>
       </div>
 
@@ -160,6 +260,63 @@ const DailySchedule: React.FC<DailyScheduleProps> = ({ goals }) => {
           <div className="text-sm text-gray-600">Progress</div>
         </div>
       </div>
+
+      {showScheduleSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Schedule Settings</h3>
+              <button
+                onClick={() => setShowScheduleSettings(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Wake Up Time
+                </label>
+                <input
+                  type="time"
+                  value={wakeUpTime}
+                  onChange={(e) => setWakeUpTime(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sleep Time
+                </label>
+                <input
+                  type="time"
+                  value={sleepTime}
+                  onChange={(e) => setSleepTime(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowScheduleSettings(false)}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={applyScheduleChanges}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Apply Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
