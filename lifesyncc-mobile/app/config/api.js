@@ -7,10 +7,12 @@ const getApiUrl = () => {
   
   // For Expo Go, always use your computer's IP address
   if (__DEV__) {
-    return `http://${YOUR_IP}:5000`;
+    // Temporarily use production API for testing
+    return 'https://lifeimprove.vercel.app';
+    // return `http://${YOUR_IP}:5000`;
   } else {
     // Production URL
-    return 'https://your-production-api.com';
+    return 'https://lifeimprove.vercel.app';
   }
 };
 
