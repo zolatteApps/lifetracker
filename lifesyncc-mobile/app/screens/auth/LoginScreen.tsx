@@ -12,7 +12,7 @@ import {
   ScrollView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../contexts/AuthContext-native';
+import { useAuth } from '../../contexts/AuthContext-mongodb';
 
 export const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');

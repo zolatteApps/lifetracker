@@ -12,7 +12,7 @@ import {
   ScrollView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../contexts/AuthContext-native';
+import { useAuth } from '../../contexts/AuthContext-mongodb';
 
 export const RegisterScreen: React.FC = () => {
   const [name, setName] = useState('');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AuthProvider } from './app/contexts/AuthContext-native';
+import { AuthProvider } from './app/contexts/AuthContext-mongodb';
 import { AppNavigator } from './app/navigation/AppNavigator';
 import { StatusBar } from 'expo-status-bar';
 

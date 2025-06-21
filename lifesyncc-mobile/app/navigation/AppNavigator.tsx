@@ -1,12 +1,13 @@
 import React from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useAuth } from '../contexts/AuthContext-native';
+import { useAuth } from '../contexts/AuthContext-mongodb';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
-import { GoalsScreen } from '../screens/main/GoalsScreen-native';
+import { GoalsScreen } from '../screens/main/GoalsScreen';
 import { ScheduleScreen } from '../screens/main/ScheduleScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,8 +58,12 @@ export const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    // You can add a splash screen here
-    return null;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={{ fontSize: 18, color: '#4F46E5', marginTop: 16 }}>Loading...</Text>
+      </View>
+    );
   }
 
   return (

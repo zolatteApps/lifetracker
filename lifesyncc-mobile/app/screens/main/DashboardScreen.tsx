@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl
 } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { Ionicons } from '@expo/vector-icons';
 
 export const DashboardScreen: React.FC = () => {
@@ -42,10 +42,10 @@ export const DashboardScreen: React.FC = () => {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hello, {user?.displayName || 'there'}!</Text>
+        <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'there'}!</Text>
         <Text style={styles.subtitle}>Track your progress across all life areas</Text>
         <View style={styles.demoNotice}>
-          <Text style={styles.demoText}>📱 Demo Mode - Ready for Firebase integration</Text>
+          <Text style={styles.demoText}>📱 Demo Mode - Connected to MongoDB</Text>
         </View>
       </View>
 

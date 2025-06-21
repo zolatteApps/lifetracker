@@ -104,7 +104,7 @@ export interface Analytics {
   moodScore: number;
 }
 
-// Firebase collection names
+// MongoDB collection names
 export const COLLECTIONS = {
   USERS: 'users',
   GOALS: 'goals',
