@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
-export const verifyToken = (handler) => async (req, res) => {
+const verifyToken = (handler) => async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
@@ -17,3 +17,5 @@ export const verifyToken = (handler) => async (req, res) => {
     return res.status(401).json({ error: 'Please authenticate' });
   }
 };
+
+module.exports = { verifyToken };

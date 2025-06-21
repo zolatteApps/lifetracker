@@ -1,6 +1,6 @@
-import connectDB from '../lib/mongodb.js';
-import User from '../models/User.js';
-import { verifyToken } from '../lib/auth-middleware.js';
+const connectDB = require('../lib/mongodb.js');
+const User = require('../models/User.js');
+const { verifyToken } = require('../lib/auth-middleware.js');
 
 async function handler(req, res) {
   // Set CORS headers
@@ -42,4 +42,4 @@ async function handler(req, res) {
   }
 }
 
-export default verifyToken(handler);
+module.exports = verifyToken(handler);

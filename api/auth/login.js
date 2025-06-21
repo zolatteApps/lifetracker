@@ -1,9 +1,9 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import connectDB from '../lib/mongodb.js';
-import User from '../models/User.js';
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const connectDB = require('../lib/mongodb.js');
+const User = require('../models/User.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
