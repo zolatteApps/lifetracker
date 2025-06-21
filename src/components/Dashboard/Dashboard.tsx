@@ -4,6 +4,7 @@ import CategoryCard from './CategoryCard';
 import DailySchedule from '../Schedule/DailySchedule';
 import CheckInModal from '../CheckIn/CheckInModal';
 import GoalModal from '../Goals/GoalModal';
+import UserProfileComponent from '../UserProfile/UserProfile';
 import { Calendar, Target, BarChart3, Clock } from 'lucide-react';
 
 interface DashboardProps {
@@ -110,6 +111,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
                 <Clock className="w-5 h-5 mr-2" />
                 Check In
               </button>
+              <UserProfileComponent />
             </div>
           </div>
         </div>

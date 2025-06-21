@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard/Dashboard';
+import Auth from './components/Auth';
 import { UserProfile } from './types';
 
 const defaultUserProfile: UserProfile = {
@@ -15,11 +16,19 @@ function App() {
     console.log('Initial userProfile from localStorage:', saved);
     return saved ? JSON.parse(saved) : defaultUserProfile;
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('token') !== null;
+  });
 
   useEffect(() => {
     console.log('UserProfile updated:', userProfile);
     localStorage.setItem('userProfile', JSON.stringify(userProfile));
   }, [userProfile]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(token !== null);
+  }, []);
 
   return (
     <Router>
@@ -27,11 +36,15 @@ function App() {
         <Routes>
           <Route 
             path="/" 
-            element={<Navigate to="/dashboard" />} 
+            element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/auth" />} 
+          />
+          <Route 
+            path="/auth" 
+            element={isAuthenticated ? <Navigate to="/dashboard" /> : <Auth />} 
           />
           <Route 
             path="/dashboard" 
-            element={<Dashboard userProfile={userProfile} />} 
+            element={isAuthenticated ? <Dashboard userProfile={userProfile} /> : <Navigate to="/auth" />} 
           />
         </Routes>
       </div>
