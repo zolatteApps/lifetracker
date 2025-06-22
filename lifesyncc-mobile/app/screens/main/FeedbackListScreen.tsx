@@ -6,15 +6,19 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import feedbackService from '../../services/feedbackService';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
+import { FeedbackModal } from '../../components/FeedbackModal';
 
 export const FeedbackListScreen: React.FC = () => {
   const { user } = useAuth();
   const [feedback, setFeedback] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const fetchFeedback = async () => {
     try {
@@ -35,6 +39,11 @@ export const FeedbackListScreen: React.FC = () => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchFeedback();
+  };
+
+  const handleSubmitFeedback = async (category: string, message: string) => {
+    await feedbackService.submitFeedback({ category, message });
+    fetchFeedback(); // Refresh the list after submission
   };
 
   const getCategoryColor = (category: string) => {
@@ -62,9 +71,24 @@ export const FeedbackListScreen: React.FC = () => {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Your Feedback</Text>
-        <Text style={styles.subtitle}>
-          {feedback.length} feedback submission{feedback.length !== 1 ? 's' : ''}
+        <Text style={styles.title}>Feedback</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Send Feedback</Text>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Ionicons name="add-circle" size={24} color="#fff" />
+          <Text style={styles.createButtonText}>Create New Feedback</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>View Feedback</Text>
+        <Text style={styles.feedbackCount}>
+          {feedback.length} submission{feedback.length !== 1 ? 's' : ''}
         </Text>
       </View>
 
@@ -95,6 +119,12 @@ export const FeedbackListScreen: React.FC = () => {
           </View>
         ))
       )}
+
+      <FeedbackModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleSubmitFeedback}
+      />
     </ScrollView>
   );
 };
@@ -120,9 +150,34 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 4,
   },
-  subtitle: {
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  createButton: {
+    backgroundColor: '#8B5CF6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  createButtonText: {
+    color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  feedbackCount: {
+    fontSize: 14,
     color: '#6b7280',
+    marginBottom: 12,
   },
   feedbackCard: {
     backgroundColor: '#fff',

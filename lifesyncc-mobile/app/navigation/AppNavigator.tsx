@@ -12,7 +12,6 @@ import { ScheduleScreen } from '../screens/main/ScheduleScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { FeedbackListScreen } from '../screens/main/FeedbackListScreen';
 import { Ionicons } from '@expo/vector-icons';
-import { FeedbackWidget } from '../components/FeedbackWidget';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -74,7 +73,6 @@ export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer>
       {user ? <MainTabs /> : <AuthStack />}
-      {user && <FeedbackWidget />}
     </NavigationContainer>
   );
 };
