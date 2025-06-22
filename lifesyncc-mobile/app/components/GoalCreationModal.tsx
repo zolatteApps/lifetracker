@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -22,6 +22,10 @@ interface GoalCreationModalProps {
   categoryColor: string;
   onClose: () => void;
   onSave: (goal: Omit<Goal, '_id' | 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'completed'>) => Promise<void>;
+  prefillData?: {
+    title: string;
+    description: string;
+  };
 }
 
 export const GoalCreationModal: React.FC<GoalCreationModalProps> = ({
@@ -30,6 +34,7 @@ export const GoalCreationModal: React.FC<GoalCreationModalProps> = ({
   categoryColor,
   onClose,
   onSave,
+  prefillData,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -41,6 +46,14 @@ export const GoalCreationModal: React.FC<GoalCreationModalProps> = ({
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Handle prefill data when modal opens
+  useEffect(() => {
+    if (visible && prefillData) {
+      setTitle(prefillData.title);
+      setDescription(prefillData.description);
+    }
+  }, [visible, prefillData]);
 
   const resetForm = () => {
     setTitle('');

@@ -20,8 +20,14 @@ export interface Goal {
 }
 
 class GoalService {
+  API_URL = API_URL;
+
   private async getAuthToken(): Promise<string | null> {
     return await AsyncStorage.getItem('authToken');
+  }
+
+  async getToken(): Promise<string | null> {
+    return this.getAuthToken();
   }
 
   private async makeRequest(url: string, options: RequestInit = {}) {
