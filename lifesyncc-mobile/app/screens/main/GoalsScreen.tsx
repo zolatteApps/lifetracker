@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import goalService, { Goal } from '../../services/goalService';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
 import { GoalCreationModal } from '../../components/GoalCreationModal';
 import { GoalProgressModal } from '../../components/GoalProgressModal';
 
@@ -25,6 +25,8 @@ const categories = [
 
 export const GoalsScreen: React.FC = () => {
   const { user } = useAuth();
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,6 +34,7 @@ export const GoalsScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<typeof categories[0] | null>(null);
   const [progressModalVisible, setProgressModalVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
   const fetchGoals = async () => {
     try {
@@ -176,9 +179,19 @@ export const GoalsScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Your Goals</Text>
         <Text style={styles.subtitle}>Track your progress across all life areas</Text>
+        {filterCategory && (
+          <TouchableOpacity 
+            style={styles.clearFilterButton}
+            onPress={() => setFilterCategory(null)}
+          >
+            <Text style={styles.clearFilterText}>Clear filter ✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {categories.map((category) => {
+      {categories
+        .filter(category => !filterCategory || category.key === filterCategory)
+        .map((category) => {
         const categoryGoals = getCategoryGoals(category.key);
         
         return (
@@ -495,5 +508,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+  },
+  clearFilterButton: {
+    marginTop: 12,
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  clearFilterText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

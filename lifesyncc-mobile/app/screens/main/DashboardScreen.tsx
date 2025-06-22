@@ -5,25 +5,77 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl
+  RefreshControl,
+  Alert
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import goalService, { Goal } from '../../services/goalService';
 
 export const DashboardScreen: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [refreshing, setRefreshing] = useState(false);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = [
-    { key: 'physical', label: 'Physical', icon: 'fitness', color: '#10B981', goals: 2, progress: 65 },
-    { key: 'mental', label: 'Mental', icon: 'library', color: '#8B5CF6', goals: 1, progress: 17 },
-    { key: 'financial', label: 'Financial', icon: 'cash', color: '#F59E0B', goals: 1, progress: 25 },
-    { key: 'social', label: 'Social', icon: 'people', color: '#3B82F6', goals: 1, progress: 25 },
-  ];
+  // Calculate statistics from goals
+  const getStats = () => {
+    const total = goals.length;
+    const completed = goals.filter(g => g.completed).length;
+    const inProgress = total - completed;
+    
+    return { total, completed, inProgress };
+  };
+
+  // Calculate category data from goals
+  const getCategoryData = () => {
+    const categoryMap = {
+      physical: { label: 'Physical', icon: 'fitness', color: '#10B981' },
+      mental: { label: 'Mental', icon: 'library', color: '#8B5CF6' },
+      financial: { label: 'Financial', icon: 'cash', color: '#F59E0B' },
+      social: { label: 'Social', icon: 'people', color: '#3B82F6' },
+    };
+
+    return Object.entries(categoryMap).map(([key, data]) => {
+      const categoryGoals = goals.filter(g => g.category === key);
+      const completedGoals = categoryGoals.filter(g => g.completed).length;
+      const progress = categoryGoals.length > 0 
+        ? Math.round((completedGoals / categoryGoals.length) * 100)
+        : 0;
+      
+      return {
+        key,
+        ...data,
+        goals: categoryGoals.length,
+        progress
+      };
+    });
+  };
+
+  const fetchGoals = async () => {
+    try {
+      const fetchedGoals = await goalService.getGoals();
+      setGoals(fetchedGoals);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      Alert.alert('Error', 'Failed to load goals');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchGoals();
+    }
+  }, [user]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    fetchGoals();
   };
 
   if (!user) {
@@ -51,25 +103,26 @@ export const DashboardScreen: React.FC = () => {
 
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>5</Text>
+          <Text style={styles.statValue}>{getStats().total}</Text>
           <Text style={styles.statLabel}>Total Goals</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>1</Text>
+          <Text style={styles.statValue}>{getStats().completed}</Text>
           <Text style={styles.statLabel}>Completed</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>4</Text>
+          <Text style={styles.statValue}>{getStats().inProgress}</Text>
           <Text style={styles.statLabel}>In Progress</Text>
         </View>
       </View>
 
       <View style={styles.categoriesGrid}>
-        {categories.map((category) => (
+        {getCategoryData().map((category) => (
           <TouchableOpacity
             key={category.key}
             style={[styles.categoryCard, { borderTopColor: category.color }]}
             activeOpacity={0.7}
+            onPress={() => navigation.navigate('Goals', { category: category.key })}
           >
             <View style={[styles.iconContainer, { backgroundColor: category.color + '20' }]}>
               <Ionicons
@@ -98,15 +151,24 @@ export const DashboardScreen: React.FC = () => {
 
       <View style={styles.quickActions}>
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Goals', { openAddModal: true })}
+        >
           <Ionicons name="add-circle" size={24} color="#4F46E5" />
           <Text style={styles.actionButtonText}>Add New Goal</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Schedule')}
+        >
           <Ionicons name="calendar" size={24} color="#4F46E5" />
           <Text style={styles.actionButtonText}>View Schedule</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Goals')}
+        >
           <Ionicons name="stats-chart" size={24} color="#4F46E5" />
           <Text style={styles.actionButtonText}>Check Progress</Text>
         </TouchableOpacity>
