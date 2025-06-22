@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import goalService, { Goal } from '../../services/goalService';
 import { SchedulePreviewModal } from '../../components/SchedulePreviewModal';
+import scheduleService from '../../services/schedule.service';
 
 export const DashboardScreen: React.FC = () => {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export const DashboardScreen: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSchedulePreview, setShowSchedulePreview] = useState(false);
   const [goalDetails, setGoalDetails] = useState<any>(null);
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false);
 
   // Calculate statistics from goals
   const getStats = () => {
@@ -127,28 +129,63 @@ export const DashboardScreen: React.FC = () => {
     }
   };
 
-  const handleAcceptSchedule = () => {
-    // Navigate to Goals screen with pre-filled data
-    navigation.navigate('Goals', { 
-      openAddModal: true,
-      prefillData: {
+  const handleAcceptSchedule = async () => {
+    setIsCreatingGoal(true);
+    
+    try {
+      // Prepare goal data
+      const goalData = {
+        category: goalDetails.category,
         title: goalDetails.title,
         description: goalDetails.description,
-        category: goalDetails.category,
         type: goalDetails.type,
         priority: goalDetails.priority,
         targetValue: goalDetails.targetValue,
-        unit: goalDetails.unit,
-        dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
         currentValue: goalDetails.currentValue || 0,
-        proposedSchedule: goalDetails.proposedSchedule
-      }
-    });
+        unit: goalDetails.unit || '',
+        dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
+        completed: false
+      };
 
-    // Reset state
-    setShowSchedulePreview(false);
-    setGoalDetails(null);
-    setGoalText('');
+      // Create the goal
+      const newGoal = await goalService.createGoal(goalData);
+      console.log('Goal created:', newGoal);
+
+      // Create schedule entries
+      if (goalDetails.proposedSchedule) {
+        await createScheduleFromProposal(goalDetails.proposedSchedule, newGoal);
+      }
+
+      // Show success and navigate to schedule
+      Alert.alert(
+        'Success!', 
+        'Your goal and schedule have been created!',
+        [
+          {
+            text: 'View Schedule',
+            onPress: () => navigation.navigate('Schedule')
+          },
+          {
+            text: 'OK',
+            style: 'default'
+          }
+        ]
+      );
+
+      // Reset state
+      setShowSchedulePreview(false);
+      setGoalDetails(null);
+      setGoalText('');
+      
+      // Refresh goals
+      await fetchGoals();
+      
+    } catch (error) {
+      console.error('Error creating goal:', error);
+      Alert.alert('Error', 'Failed to create goal and schedule. Please try again.');
+    } finally {
+      setIsCreatingGoal(false);
+    }
   };
 
   const handleModifySchedule = () => {
@@ -161,6 +198,76 @@ export const DashboardScreen: React.FC = () => {
     setShowSchedulePreview(false);
     setGoalDetails(null);
     // Keep the goal text so user can try again
+  };
+
+  const createScheduleFromProposal = async (proposedSchedule: any, goal: Goal) => {
+    const today = new Date();
+    
+    for (const session of proposedSchedule.sessions) {
+      // Create schedule entries based on frequency
+      if (session.frequency === 'daily') {
+        // Create entries for the next 30 days
+        for (let i = 0; i < session.totalOccurrences; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() + i);
+          
+          // Check if this day is included
+          const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+          if (session.days.includes(dayName)) {
+            await createScheduleEntry(date, session, goal);
+          }
+        }
+      } else if (session.frequency === 'weekly') {
+        // Create weekly entries
+        let occurrences = 0;
+        let currentDate = new Date(today);
+        
+        while (occurrences < session.totalOccurrences) {
+          const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getDay()];
+          if (session.days.includes(dayName)) {
+            await createScheduleEntry(currentDate, session, goal);
+            occurrences++;
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+    }
+  };
+
+  const createScheduleEntry = async (date: Date, session: any, goal: Goal) => {
+    const dateStr = scheduleService.formatDateForAPI(date);
+    
+    const block = {
+      id: scheduleService.generateBlockId(),
+      startTime: session.time,
+      endTime: calculateEndTime(session.time, session.duration),
+      activity: session.activity,
+      category: goal.category,
+      goalId: goal._id || goal.id,
+      completed: false
+    };
+
+    try {
+      // Get existing schedule for the date
+      const existingSchedule = await scheduleService.getSchedule(dateStr);
+      const blocks = existingSchedule?.blocks || [];
+      
+      // Add new block
+      blocks.push(block);
+      
+      // Update schedule
+      await scheduleService.updateSchedule(dateStr, blocks);
+    } catch (error) {
+      console.error('Error creating schedule entry:', error);
+    }
+  };
+
+  const calculateEndTime = (startTime: string, durationMinutes: number) => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   };
 
   if (!user) {
@@ -293,6 +400,7 @@ export const DashboardScreen: React.FC = () => {
         onAccept={handleAcceptSchedule}
         onModify={handleModifySchedule}
         onCancel={handleCancelSchedule}
+        loading={isCreatingGoal}
       />
     </View>
   );
