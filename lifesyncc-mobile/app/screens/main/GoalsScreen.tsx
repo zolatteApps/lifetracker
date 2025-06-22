@@ -178,13 +178,17 @@ export const GoalsScreen: React.FC = () => {
     try {
       // Get existing schedule for the date
       const existingSchedule = await scheduleService.getSchedule(dateStr);
-      const blocks = existingSchedule?.blocks || [];
+      
+      // Filter out any invalid blocks and ensure we have valid data
+      const validBlocks = (existingSchedule?.blocks || []).filter(b => 
+        b && b.id && b.title && b.category && b.startTime && b.endTime
+      );
       
       // Add new block
-      blocks.push(block);
+      validBlocks.push(block);
       
       // Update schedule
-      await scheduleService.updateSchedule(dateStr, blocks);
+      await scheduleService.updateSchedule(dateStr, validBlocks);
     } catch (error) {
       console.error('Error creating schedule entry:', error);
       // Re-throw to propagate error to caller

@@ -257,6 +257,12 @@ export const DashboardScreen: React.FC = () => {
   const createScheduleEntry = async (date: Date, session: any, goal: Goal) => {
     const dateStr = scheduleService.formatDateForAPI(date);
     
+    // Ensure all required fields are present
+    if (!session.activity || !goal.category) {
+      console.error('Missing required data:', { session, goal });
+      throw new Error('Missing required data for schedule entry');
+    }
+    
     const block = {
       id: scheduleService.generateBlockId(),
       startTime: session.time,
@@ -271,13 +277,17 @@ export const DashboardScreen: React.FC = () => {
     try {
       // Get existing schedule for the date
       const existingSchedule = await scheduleService.getSchedule(dateStr);
-      const blocks = existingSchedule?.blocks || [];
+      
+      // Filter out any invalid blocks and ensure we have valid data
+      const validBlocks = (existingSchedule?.blocks || []).filter(b => 
+        b && b.id && b.title && b.category && b.startTime && b.endTime
+      );
       
       // Add new block
-      blocks.push(block);
+      validBlocks.push(block);
       
       // Update schedule
-      await scheduleService.updateSchedule(dateStr, blocks);
+      await scheduleService.updateSchedule(dateStr, validBlocks);
     } catch (error) {
       console.error('Error creating schedule entry:', error);
       // Re-throw to propagate error to caller
