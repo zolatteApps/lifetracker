@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const scheduleBlockSchema = new mongoose.Schema({
   id: {
@@ -54,4 +54,4 @@ const scheduleSchema = new mongoose.Schema({
 
 scheduleSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-export default mongoose.models.Schedule || mongoose.model('Schedule', scheduleSchema);
+module.exports = mongoose.models.Schedule || mongoose.model('Schedule', scheduleSchema);
