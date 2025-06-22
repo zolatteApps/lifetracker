@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import scheduleService from '../../services/schedule.service';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { ScheduleSkeleton } from '../../components/ScheduleSkeleton';
 
 interface TimeSlot {
   id: string;
@@ -53,6 +54,7 @@ export const ScheduleScreen: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingBlock, setEditingBlock] = useState<ScheduleBlock | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
   const [newTask, setNewTask] = useState({
     title: '',
@@ -71,30 +73,46 @@ export const ScheduleScreen: React.FC = () => {
     return date.toLocaleDateString(undefined, options);
   };
 
-  const fetchSchedule = useCallback(async () => {
+  const fetchSchedule = useCallback(async (showLoadingState = true) => {
     if (!user) return;
     
+    const dateStr = scheduleService.formatDateForAPI(selectedDate);
+    
+    // Try to load from cache first for instant display
+    if (!initialLoadComplete) {
+      const cached = await scheduleService.getCachedSchedule(dateStr);
+      if (cached) {
+        setSchedule(cached.data.blocks || []);
+        setScheduleId(cached.data._id || '');
+        setLoading(false);
+      }
+    }
+    
     try {
-      const dateStr = scheduleService.formatDateForAPI(selectedDate);
+      // Fetch fresh data from API
       const data = await scheduleService.getSchedule(dateStr);
       setSchedule(data.blocks || []);
       setScheduleId(data._id || '');
+      setInitialLoadComplete(true);
     } catch (error) {
       console.error('Error fetching schedule:', error);
-      Alert.alert('Error', 'Failed to load schedule');
+      // Only show error if we don't have cached data
+      if (!schedule.length) {
+        Alert.alert('Error', 'Failed to load schedule. Showing offline data.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, selectedDate]);
+  }, [user, selectedDate, initialLoadComplete, schedule.length]);
 
   useEffect(() => {
     fetchSchedule();
-  }, [fetchSchedule]);
+  }, [selectedDate]); // Only depend on selectedDate to avoid loops
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchSchedule();
+    fetchSchedule(false);
   };
 
   const toggleTaskCompletion = async (blockId: string) => {
@@ -200,13 +218,8 @@ export const ScheduleScreen: React.FC = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4F46E5" />
-      </View>
-    );
-  }
+  // Don't block entire UI while loading
+  const isInitialLoad = loading && !schedule.length;
 
   const timeSlots = convertToTimeSlots(schedule);
 
@@ -227,13 +240,16 @@ export const ScheduleScreen: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.statsContainer}>
+      {isInitialLoad ? (
+        <ScheduleSkeleton />
+      ) : (
+        <ScrollView 
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{timeSlots.length}</Text>
             <Text style={styles.statLabel}>Total Tasks</Text>
@@ -298,7 +314,8 @@ export const ScheduleScreen: React.FC = () => {
             ))
           )}
         </View>
-      </ScrollView>
+        </ScrollView>
+      )}
 
       <TouchableOpacity 
         style={styles.addButton}

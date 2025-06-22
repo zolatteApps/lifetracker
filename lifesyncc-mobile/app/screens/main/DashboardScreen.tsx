@@ -40,10 +40,15 @@ export const DashboardScreen: React.FC = () => {
 
     return Object.entries(categoryMap).map(([key, data]) => {
       const categoryGoals = goals.filter(g => g.category === key);
-      const completedGoals = categoryGoals.filter(g => g.completed).length;
-      const progress = categoryGoals.length > 0 
-        ? Math.round((completedGoals / categoryGoals.length) * 100)
-        : 0;
+      
+      // Calculate average progress of all goals in category
+      let progress = 0;
+      if (categoryGoals.length > 0) {
+        const totalProgress = categoryGoals.reduce((sum, goal) => {
+          return sum + (goal.progress || 0);
+        }, 0);
+        progress = Math.round(totalProgress / categoryGoals.length);
+      }
       
       return {
         key,
@@ -96,9 +101,6 @@ export const DashboardScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'there'}!</Text>
         <Text style={styles.subtitle}>Track your progress across all life areas</Text>
-        <View style={styles.demoNotice}>
-          <Text style={styles.demoText}>📱 Demo Mode - Connected to MongoDB</Text>
-        </View>
       </View>
 
       <View style={styles.statsContainer}>
@@ -197,17 +199,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
     marginBottom: 16,
-  },
-  demoNotice: {
-    backgroundColor: '#4F46E5',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  demoText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
