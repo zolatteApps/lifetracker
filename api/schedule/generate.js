@@ -1,6 +1,6 @@
-import connectDB from '../lib/mongodb';
-import Schedule from '../models/Schedule';
-import authMiddleware from '../lib/auth-middleware';
+const connectDB = require('../lib/mongodb');
+const Schedule = require('../models/Schedule');
+const { verifyToken } = require('../lib/auth-middleware');
 
 const generateScheduleBlocks = (goals) => {
   const blocks = [];
@@ -143,7 +143,20 @@ const generateScheduleBlocks = (goals) => {
   return blocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -151,12 +164,8 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     
-    const authResult = await authMiddleware(req);
-    if (authResult.error) {
-      return res.status(401).json({ error: authResult.error });
-    }
-    
-    const userId = authResult.userId;
+    // verifyToken middleware adds userId to req
+    const userId = req.userId;
     const { date, goals } = req.body;
     
     if (!date || !goals) {
@@ -177,3 +186,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server error' });
   }
 }
+
+module.exports = verifyToken(handler);
