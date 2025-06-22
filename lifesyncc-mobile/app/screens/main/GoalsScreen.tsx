@@ -1,26 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
-
-interface Goal {
-  id: string;
-  category: 'physical' | 'mental' | 'financial' | 'social';
-  title: string;
-  description: string;
-  type: 'milestone' | 'numeric' | 'habit';
-  progress: number;
-  targetValue?: number;
-  currentValue?: number;
-  completed: boolean;
-}
+import goalService, { Goal } from '../../services/goalService';
+import { useFocusEffect } from '@react-navigation/native';
+import { GoalCreationModal } from '../../components/GoalCreationModal';
+import { GoalProgressModal } from '../../components/GoalProgressModal';
 
 const categories = [
   { key: 'physical', label: 'Physical', icon: 'fitness', color: '#10B981' },
@@ -32,57 +26,123 @@ const categories = [
 export const GoalsScreen: React.FC = () => {
   const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<typeof categories[0] | null>(null);
+  const [progressModalVisible, setProgressModalVisible] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 
-  const addSampleGoal = (category: Goal['category']) => {
-    const sampleGoals = {
-      physical: {
-        title: 'Daily Morning Run',
-        description: 'Run 5km every morning to improve fitness',
-        type: 'habit' as const,
-        targetValue: 30,
-        currentValue: 5,
-      },
-      mental: {
-        title: 'Read 12 Books This Year',
-        description: 'Expand knowledge by reading one book per month',
-        type: 'numeric' as const,
-        targetValue: 12,
-        currentValue: 2,
-      },
-      financial: {
-        title: 'Emergency Fund Goal',
-        description: 'Save $10,000 for emergency fund',
-        type: 'numeric' as const,
-        targetValue: 10000,
-        currentValue: 2500,
-      },
-      social: {
-        title: 'Weekly Friend Meetups',
-        description: 'Meet with friends at least once per week',
-        type: 'habit' as const,
-        targetValue: 4,
-        currentValue: 1,
-      },
-    };
+  const fetchGoals = async () => {
+    try {
+      const fetchedGoals = await goalService.getGoals();
+      setGoals(fetchedGoals);
+      // Save offline for backup
+      await goalService.saveGoalsOffline(fetchedGoals);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      // Try to load offline goals
+      const offlineGoals = await goalService.getOfflineGoals();
+      if (offlineGoals) {
+        setGoals(offlineGoals);
+        Alert.alert('Offline Mode', 'Showing cached goals. Some features may be limited.');
+      } else {
+        Alert.alert('Error', 'Failed to load goals');
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-    const sampleGoal = sampleGoals[category];
-    const progress = sampleGoal.targetValue ? 
-      Math.round((sampleGoal.currentValue! / sampleGoal.targetValue) * 100) : 0;
+  useEffect(() => {
+    if (user) {
+      fetchGoals();
+    }
+  }, [user]);
 
-    const newGoal: Goal = {
-      id: Date.now().toString(),
-      category,
-      title: sampleGoal.title,
-      description: sampleGoal.description,
-      type: sampleGoal.type,
-      progress,
-      targetValue: sampleGoal.targetValue,
-      currentValue: sampleGoal.currentValue,
-      completed: false,
-    };
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchGoals();
+      }
+    }, [user])
+  );
 
-    setGoals(prev => [...prev, newGoal]);
-    Alert.alert('Success!', `${sampleGoal.title} added successfully!`);
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchGoals();
+  };
+
+  const handleCreateGoal = async (goal: Omit<Goal, '_id' | 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'completed'>) => {
+    try {
+      const newGoal = await goalService.createGoal({
+        ...goal,
+        completed: false,
+      });
+
+      setGoals(prev => [...prev, newGoal]);
+      Alert.alert('Success!', 'Goal created successfully!');
+      await fetchGoals(); // Refresh to ensure sync
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create goal. Please try again.');
+      console.error('Error creating goal:', error);
+      throw error;
+    }
+  };
+
+  const openGoalModal = (category: typeof categories[0]) => {
+    setSelectedCategory(category);
+    setModalVisible(true);
+  };
+
+  const openProgressModal = (goal: Goal, category: typeof categories[0]) => {
+    setSelectedGoal(goal);
+    setSelectedCategory(category);
+    setProgressModalVisible(true);
+  };
+
+  const updateGoalProgress = async (goalId: string, newValue: number) => {
+    try {
+      const goal = goals.find(g => (g._id || g.id) === goalId);
+      if (!goal) return;
+
+      const progressData = goal.type === 'milestone' 
+        ? { progress: newValue }
+        : { currentValue: newValue };
+
+      const updatedGoal = await goalService.updateProgress(goalId, progressData);
+      setGoals(prev => prev.map(g => 
+        (g._id || g.id) === goalId ? updatedGoal : g
+      ));
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update progress');
+      console.error('Error updating progress:', error);
+    }
+  };
+
+  const deleteGoal = async (goalId: string) => {
+    Alert.alert(
+      'Delete Goal',
+      'Are you sure you want to delete this goal?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await goalService.deleteGoal(goalId);
+              setGoals(prev => prev.filter(g => (g._id || g.id) !== goalId));
+              Alert.alert('Success', 'Goal deleted successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete goal');
+              console.error('Error deleting goal:', error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getCategoryGoals = (category: Goal['category']) => {
@@ -97,8 +157,22 @@ export const GoalsScreen: React.FC = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#4f46e5" />
+        <Text style={styles.loadingText}>Loading your goals...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Your Goals</Text>
         <Text style={styles.subtitle}>Track your progress across all life areas</Text>
@@ -120,7 +194,7 @@ export const GoalsScreen: React.FC = () => {
               
               <TouchableOpacity
                 style={[styles.addButton, { backgroundColor: category.color }]}
-                onPress={() => addSampleGoal(category.key)}
+                onPress={() => openGoalModal(category)}
               >
                 <Ionicons name="add" size={20} color="#fff" />
               </TouchableOpacity>
@@ -133,10 +207,21 @@ export const GoalsScreen: React.FC = () => {
               </View>
             ) : (
               categoryGoals.map((goal) => (
-                <View key={goal.id} style={styles.goalCard}>
+                <TouchableOpacity
+                  key={goal._id || goal.id}
+                  style={styles.goalCard}
+                  onPress={() => !goal.completed && openProgressModal(goal, category)}
+                  onLongPress={() => deleteGoal(goal._id || goal.id || '')}
+                  activeOpacity={0.9}
+                >
                   <View style={styles.goalHeader}>
                     <Text style={styles.goalTitle}>{goal.title}</Text>
-                    <Text style={styles.goalProgress}>{goal.progress}%</Text>
+                    <Text style={[
+                      styles.goalProgress,
+                      goal.completed && styles.completedProgress
+                    ]}>
+                      {goal.progress}%
+                    </Text>
                   </View>
                   <Text style={styles.goalDescription}>{goal.description}</Text>
                   
@@ -148,17 +233,32 @@ export const GoalsScreen: React.FC = () => {
                             styles.progressFill,
                             {
                               width: `${goal.progress}%`,
-                              backgroundColor: category.color,
+                              backgroundColor: goal.completed ? '#10B981' : category.color,
                             },
                           ]}
                         />
                       </View>
                       <Text style={styles.progressText}>
-                        {goal.currentValue} / {goal.targetValue}
+                        {goal.currentValue} / {goal.targetValue} {goal.unit || ''}
                       </Text>
                     </View>
                   )}
-                </View>
+
+                  {goal.type === 'habit' && (
+                    <View style={styles.habitContainer}>
+                      <Text style={styles.habitText}>
+                        {goal.currentValue} / {goal.targetValue} days this month
+                      </Text>
+                    </View>
+                  )}
+
+                  {goal.completed && (
+                    <View style={styles.completedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      <Text style={styles.completedText}>Completed</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -171,10 +271,32 @@ export const GoalsScreen: React.FC = () => {
           <Text style={styles.welcomeText}>
             Start by adding your first goal in any category. Tap the + button next to a category to get started.
           </Text>
-          <Text style={styles.mockNote}>
-            📱 Demo Mode: Goals are stored locally for testing
-          </Text>
         </View>
+      )}
+
+      {selectedCategory && (
+        <>
+          <GoalCreationModal
+            visible={modalVisible}
+            category={selectedCategory.key}
+            categoryColor={selectedCategory.color}
+            onClose={() => {
+              setModalVisible(false);
+              setSelectedCategory(null);
+            }}
+            onSave={handleCreateGoal}
+          />
+          <GoalProgressModal
+            visible={progressModalVisible}
+            goal={selectedGoal}
+            categoryColor={selectedCategory.color}
+            onClose={() => {
+              setProgressModalVisible(false);
+              setSelectedGoal(null);
+            }}
+            onUpdate={updateGoalProgress}
+          />
+        </>
       )}
     </ScrollView>
   );
@@ -184,6 +306,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     padding: 24,
@@ -286,6 +412,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4f46e5',
   },
+  completedProgress: {
+    color: '#10B981',
+  },
   goalDescription: {
     fontSize: 14,
     color: '#6b7280',
@@ -309,8 +438,27 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 12,
     color: '#6b7280',
-    minWidth: 60,
+    minWidth: 80,
     textAlign: 'right',
+  },
+  habitContainer: {
+    marginTop: 8,
+  },
+  habitText: {
+    fontSize: 13,
+    color: '#6b7280',
+    fontStyle: 'italic',
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  completedText: {
+    fontSize: 13,
+    color: '#10B981',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   welcomeCard: {
     backgroundColor: '#fff',
@@ -336,18 +484,16 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 16,
-  },
-  mockNote: {
-    fontSize: 14,
-    color: '#8B5CF6',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
   message: {
     fontSize: 18,
     color: '#6b7280',
     textAlign: 'center',
     marginTop: 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6b7280',
   },
 });
