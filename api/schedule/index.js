@@ -96,8 +96,33 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Schedule API error:', error);
-    return res.status(500).json({ error: 'Server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+      method: req.method
+    });
+    return res.status(500).json({ 
+      error: 'Server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
 
-module.exports = verifyToken(handler);
+module.exports = async (req, res) => {
+  // Handle CORS first
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Apply auth middleware
+  return verifyToken(handler)(req, res);
+};
