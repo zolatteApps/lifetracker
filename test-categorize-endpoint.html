@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Goal Categorization</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; }
+        input { width: 300px; }
+        button { background: #4F46E5; color: white; border: none; cursor: pointer; }
+        #result { margin-top: 20px; padding: 20px; background: #f3f4f6; border-radius: 8px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Test Goal Categorization</h1>
+    <p>Enter your auth token and test goal:</p>
+    
+    <div>
+        <label>Auth Token (from mobile app logs):</label><br>
+        <input type="text" id="token" placeholder="Bearer eyJhbGc..." style="width: 500px"><br><br>
+        
+        <label>Goal Text:</label><br>
+        <input type="text" id="goal" placeholder="Run 5k every morning" value="Run 5k every morning"><br><br>
+        
+        <button onclick="testCategorize()">Test Categorization</button>
+    </div>
+    
+    <div id="result"></div>
+    
+    <script>
+        async function testCategorize() {
+            const token = document.getElementById('token').value;
+            const goalText = document.getElementById('goal').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!token || !goalText) {
+                resultDiv.innerHTML = '<p class="error">Please enter both token and goal text</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('https://lifetracker-ten.vercel.app/api/goals/categorize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ goalText })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">Success!</p>
+                        <p><strong>Category:</strong> ${data.category}</p>
+                        <p><strong>Goal:</strong> ${data.goalText}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">Error: ${data.error}</p>
+                        ${data.details ? `<p>Details: ${data.details}</p>` : ''}
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Network Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 const connectDB = require('../lib/mongodb');
-const authMiddleware = require('../lib/auth-middleware');
+const { verifyToken } = require('../lib/auth-middleware');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({
@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    return authMiddleware(async (req, res) => {
+    return verifyToken(async (req, res) => {
       try {
         console.log('Categorize request received:', req.body);
         const { goalText } = req.body;
