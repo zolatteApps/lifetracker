@@ -15,6 +15,7 @@ import goalService, { Goal } from '../../services/goalService';
 import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
 import { GoalCreationModal } from '../../components/GoalCreationModal';
 import { GoalProgressModal } from '../../components/GoalProgressModal';
+import scheduleService from '../../services/schedule.service';
 
 const categories = [
   { key: 'physical', label: 'Physical', icon: 'fitness', color: '#10B981' },
@@ -103,13 +104,97 @@ export const GoalsScreen: React.FC = () => {
       });
 
       setGoals(prev => [...prev, newGoal]);
-      Alert.alert('Success!', 'Goal created successfully!');
+      
+      // Check if there's a proposed schedule to create
+      if (modalPrefillData?.proposedSchedule) {
+        try {
+          await createScheduleFromProposal(modalPrefillData.proposedSchedule, newGoal);
+          Alert.alert('Success!', 'Goal and schedule created successfully!');
+        } catch (scheduleError) {
+          console.error('Error creating schedule:', scheduleError);
+          Alert.alert('Success!', 'Goal created successfully! (Schedule creation failed)');
+        }
+      } else {
+        Alert.alert('Success!', 'Goal created successfully!');
+      }
+      
       await fetchGoals(); // Refresh to ensure sync
     } catch (error) {
       Alert.alert('Error', 'Failed to create goal. Please try again.');
       console.error('Error creating goal:', error);
       throw error;
     }
+  };
+
+  const createScheduleFromProposal = async (proposedSchedule: any, goal: Goal) => {
+    const today = new Date();
+    
+    for (const session of proposedSchedule.sessions) {
+      // Create schedule entries based on frequency
+      if (session.frequency === 'daily') {
+        // Create entries for the next 30 days
+        for (let i = 0; i < session.totalOccurrences; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() + i);
+          
+          // Check if this day is included
+          const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+          if (session.days.includes(dayName)) {
+            await createScheduleEntry(date, session, goal);
+          }
+        }
+      } else if (session.frequency === 'weekly') {
+        // Create weekly entries
+        let occurrences = 0;
+        let currentDate = new Date(today);
+        
+        while (occurrences < session.totalOccurrences) {
+          const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getDay()];
+          if (session.days.includes(dayName)) {
+            await createScheduleEntry(currentDate, session, goal);
+            occurrences++;
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+    }
+  };
+
+  const createScheduleEntry = async (date: Date, session: any, goal: Goal) => {
+    const dateStr = scheduleService.formatDateForAPI(date);
+    const [hours, minutes] = session.time.split(':');
+    
+    const block = {
+      id: scheduleService.generateBlockId(),
+      startTime: session.time,
+      endTime: calculateEndTime(session.time, session.duration),
+      activity: session.activity,
+      category: goal.category,
+      goalId: goal._id || goal.id,
+      completed: false
+    };
+
+    try {
+      // Get existing schedule for the date
+      const existingSchedule = await scheduleService.getSchedule(dateStr);
+      const blocks = existingSchedule?.blocks || [];
+      
+      // Add new block
+      blocks.push(block);
+      
+      // Update schedule
+      await scheduleService.updateSchedule(dateStr, blocks);
+    } catch (error) {
+      console.error('Error creating schedule entry:', error);
+    }
+  };
+
+  const calculateEndTime = (startTime: string, durationMinutes: number) => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   };
 
   const openGoalModal = (category: typeof categories[0]) => {

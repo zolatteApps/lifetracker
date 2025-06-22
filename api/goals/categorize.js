@@ -53,7 +53,22 @@ Provide a JSON response with the following fields:
   "priority": "high" | "medium" | "low",
   "targetValue": number or null,
   "unit": "string describing the unit" or "",
-  "suggestedDueDate": number of days from now or null
+  "suggestedDueDate": number of days from now or null,
+  "proposedSchedule": {
+    "summary": "brief description of the schedule",
+    "explanation": "why this schedule makes sense",
+    "sessions": [
+      {
+        "activity": "activity name",
+        "frequency": "daily" | "weekly" | "monthly",
+        "daysPerWeek": number,
+        "time": "HH:MM",
+        "duration": minutes as number,
+        "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] or specific days,
+        "totalOccurrences": number
+      }
+    ]
+  }
 }
 
 Categories:
@@ -75,6 +90,33 @@ Examples:
 "Run 5k every morning" → habit, targetValue: 30, unit: "days"
 "Save $5000" → numeric, targetValue: 5000, unit: "dollars"
 "Learn Spanish" → milestone, targetValue: null, unit: ""
+
+Schedule Creation Guidelines:
+- For "morning" activities: schedule between 6:00-8:00
+- For "evening" activities: schedule between 18:00-20:00
+- For "daily" habits: include all 7 days
+- For fitness goals: suggest 3-5 days per week with rest days
+- For learning goals: suggest consistent daily sessions of 30-60 minutes
+- For financial goals: suggest weekly/monthly check-ins
+- Consider work hours (9:00-17:00) when scheduling
+- Be specific about times and duration
+
+Example schedule for "Run 5k every morning":
+{
+  "proposedSchedule": {
+    "summary": "Daily morning 5K runs for 30 days",
+    "explanation": "Morning runs at 6 AM help build consistency and start the day with energy. Daily practice develops a strong habit.",
+    "sessions": [{
+      "activity": "5K Morning Run",
+      "frequency": "daily",
+      "daysPerWeek": 7,
+      "time": "06:00",
+      "duration": 60,
+      "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "totalOccurrences": 30
+    }]
+  }
+}
 
 Respond with only valid JSON.`
           }]

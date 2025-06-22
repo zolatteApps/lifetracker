@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import goalService, { Goal } from '../../services/goalService';
+import { SchedulePreviewModal } from '../../components/SchedulePreviewModal';
 
 export const DashboardScreen: React.FC = () => {
   const { user } = useAuth();
@@ -23,6 +24,8 @@ export const DashboardScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [goalText, setGoalText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showSchedulePreview, setShowSchedulePreview] = useState(false);
+  const [goalDetails, setGoalDetails] = useState<any>(null);
 
   // Calculate statistics from goals
   const getStats = () => {
@@ -109,27 +112,12 @@ export const DashboardScreen: React.FC = () => {
         throw new Error('Failed to categorize goal');
       }
 
-      const goalDetails = await response.json();
-      console.log('DashboardScreen: AI response:', goalDetails);
+      const responseData = await response.json();
+      console.log('DashboardScreen: AI response:', responseData);
 
-      // Navigate to Goals screen with pre-filled data
-      navigation.navigate('Goals', { 
-        openAddModal: true,
-        prefillData: {
-          title: goalDetails.title,
-          description: goalDetails.description,
-          category: goalDetails.category,
-          type: goalDetails.type,
-          priority: goalDetails.priority,
-          targetValue: goalDetails.targetValue,
-          unit: goalDetails.unit,
-          dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
-          currentValue: goalDetails.currentValue || 0
-        }
-      });
-
-      // Clear the input
-      setGoalText('');
+      // Store the goal details and show schedule preview
+      setGoalDetails(responseData);
+      setShowSchedulePreview(true);
       
     } catch (error) {
       console.error('Error adding goal:', error);
@@ -137,6 +125,42 @@ export const DashboardScreen: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleAcceptSchedule = () => {
+    // Navigate to Goals screen with pre-filled data
+    navigation.navigate('Goals', { 
+      openAddModal: true,
+      prefillData: {
+        title: goalDetails.title,
+        description: goalDetails.description,
+        category: goalDetails.category,
+        type: goalDetails.type,
+        priority: goalDetails.priority,
+        targetValue: goalDetails.targetValue,
+        unit: goalDetails.unit,
+        dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
+        currentValue: goalDetails.currentValue || 0,
+        proposedSchedule: goalDetails.proposedSchedule
+      }
+    });
+
+    // Reset state
+    setShowSchedulePreview(false);
+    setGoalDetails(null);
+    setGoalText('');
+  };
+
+  const handleModifySchedule = () => {
+    // For now, just proceed to goal creation where they can adjust manually
+    // In future, we can add a schedule modification UI
+    handleAcceptSchedule();
+  };
+
+  const handleCancelSchedule = () => {
+    setShowSchedulePreview(false);
+    setGoalDetails(null);
+    // Keep the goal text so user can try again
   };
 
   if (!user) {
@@ -148,12 +172,13 @@ export const DashboardScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       <View style={styles.header}>
         <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'there'}!</Text>
         <Text style={styles.subtitle}>Track your progress across all life areas</Text>
@@ -260,6 +285,16 @@ export const DashboardScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
     </ScrollView>
+
+      {/* Schedule Preview Modal */}
+      <SchedulePreviewModal
+        visible={showSchedulePreview}
+        goalDetails={goalDetails}
+        onAccept={handleAcceptSchedule}
+        onModify={handleModifySchedule}
+        onCancel={handleCancelSchedule}
+      />
+    </View>
   );
 };
 
