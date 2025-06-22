@@ -25,6 +25,12 @@ interface GoalCreationModalProps {
   prefillData?: {
     title: string;
     description: string;
+    type?: 'milestone' | 'numeric' | 'habit';
+    priority?: 'high' | 'medium' | 'low';
+    targetValue?: number;
+    unit?: string;
+    dueDate?: Date;
+    currentValue?: number;
   };
 }
 
@@ -52,6 +58,25 @@ export const GoalCreationModal: React.FC<GoalCreationModalProps> = ({
     if (visible && prefillData) {
       setTitle(prefillData.title);
       setDescription(prefillData.description);
+      
+      if (prefillData.type) {
+        setType(prefillData.type);
+      }
+      if (prefillData.priority) {
+        setPriority(prefillData.priority);
+      }
+      if (prefillData.targetValue !== undefined) {
+        setTargetValue(prefillData.targetValue.toString());
+      }
+      if (prefillData.unit) {
+        setUnit(prefillData.unit);
+      }
+      if (prefillData.dueDate) {
+        setDueDate(prefillData.dueDate);
+      }
+      if (prefillData.currentValue !== undefined) {
+        setCurrentValue(prefillData.currentValue.toString());
+      }
     }
   }, [visible, prefillData]);
 

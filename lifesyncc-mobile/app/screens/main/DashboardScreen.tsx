@@ -109,15 +109,21 @@ export const DashboardScreen: React.FC = () => {
         throw new Error('Failed to categorize goal');
       }
 
-      const { category } = await response.json();
+      const goalDetails = await response.json();
 
       // Navigate to Goals screen with pre-filled data
       navigation.navigate('Goals', { 
         openAddModal: true,
         prefillData: {
-          title: goalText.trim(),
-          category: category,
-          description: goalText.trim()
+          title: goalDetails.title,
+          description: goalDetails.description,
+          category: goalDetails.category,
+          type: goalDetails.type,
+          priority: goalDetails.priority,
+          targetValue: goalDetails.targetValue,
+          unit: goalDetails.unit,
+          dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
+          currentValue: goalDetails.currentValue || 0
         }
       });
 

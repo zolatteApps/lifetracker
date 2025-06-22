@@ -34,15 +34,27 @@ module.exports = async (req, res) => {
           return res.status(500).json({ error: 'AI service not configured. Please contact support.' });
         }
 
-        // Call Claude API to categorize the goal
+        // Call Claude API to analyze the goal comprehensively
         const message = await anthropic.messages.create({
           model: 'claude-3-haiku-20240307',
-          max_tokens: 100,
+          max_tokens: 500,
           temperature: 0,
-          system: "You are a goal categorization assistant. Categorize goals into exactly one of these categories: physical, mental, financial, or social. Respond with only the category name in lowercase.",
+          system: "You are a goal analysis assistant. Analyze goals and provide structured information to help users track their progress.",
           messages: [{
             role: 'user',
-            content: `Categorize this goal: "${goalText}"
+            content: `Analyze this goal and provide structured information: "${goalText}"
+
+Provide a JSON response with the following fields:
+{
+  "category": "physical" | "mental" | "financial" | "social",
+  "title": "short concise title (max 50 chars)",
+  "description": "detailed description of the goal",
+  "type": "milestone" | "numeric" | "habit",
+  "priority": "high" | "medium" | "low",
+  "targetValue": number or null,
+  "unit": "string describing the unit" or "",
+  "suggestedDueDate": number of days from now or null
+}
 
 Categories:
 - physical: Exercise, fitness, health, sports, diet, sleep
@@ -50,22 +62,72 @@ Categories:
 - financial: Money, savings, investments, budgeting, income, expenses
 - social: Relationships, family, friends, networking, community, communication
 
-Respond with only one word: the category name in lowercase.`
+Types:
+- milestone: One-time achievement (e.g., "Complete a marathon")
+- numeric: Measurable target (e.g., "Lose 20 pounds", "Save $5000")
+- habit: Recurring activity (e.g., "Exercise daily", "Read 2 books monthly")
+
+For habits, set targetValue to days per month (e.g., 30 for daily, 4 for weekly).
+For numeric goals, extract the number from the goal.
+For milestones, set targetValue to null.
+
+Examples:
+"Run 5k every morning" → habit, targetValue: 30, unit: "days"
+"Save $5000" → numeric, targetValue: 5000, unit: "dollars"
+"Learn Spanish" → milestone, targetValue: null, unit: ""
+
+Respond with only valid JSON.`
           }]
         });
 
-        const category = message.content[0].text.trim().toLowerCase();
-        console.log('AI response:', message.content[0].text);
-        console.log('Parsed category:', category);
+        const aiResponse = message.content[0].text.trim();
+        console.log('AI response:', aiResponse);
         
-        // Validate the category
+        let goalDetails;
+        try {
+          goalDetails = JSON.parse(aiResponse);
+        } catch (parseError) {
+          console.error('Failed to parse AI response:', aiResponse);
+          return res.status(500).json({ error: 'Failed to parse AI response' });
+        }
+
+        // Validate the response
         const validCategories = ['physical', 'mental', 'financial', 'social'];
-        if (!validCategories.includes(category)) {
+        const validTypes = ['milestone', 'numeric', 'habit'];
+        const validPriorities = ['high', 'medium', 'low'];
+
+        if (!validCategories.includes(goalDetails.category)) {
           return res.status(500).json({ error: 'Invalid category returned by AI' });
         }
 
+        if (!validTypes.includes(goalDetails.type)) {
+          goalDetails.type = 'milestone'; // Default fallback
+        }
+
+        if (!validPriorities.includes(goalDetails.priority)) {
+          goalDetails.priority = 'medium'; // Default fallback
+        }
+
+        // Calculate due date if suggested
+        if (goalDetails.suggestedDueDate && typeof goalDetails.suggestedDueDate === 'number') {
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + goalDetails.suggestedDueDate);
+          goalDetails.dueDate = dueDate.toISOString();
+        } else {
+          goalDetails.dueDate = null;
+        }
+
+        // Clean up the response
+        delete goalDetails.suggestedDueDate;
+        
+        // Ensure numeric values
+        if (goalDetails.targetValue !== null) {
+          goalDetails.targetValue = Number(goalDetails.targetValue) || 0;
+        }
+
         return res.status(200).json({ 
-          category,
+          ...goalDetails,
+          currentValue: 0,
           goalText 
         });
 
