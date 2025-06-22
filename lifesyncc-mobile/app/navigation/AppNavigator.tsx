@@ -10,7 +10,9 @@ import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { GoalsScreen } from '../screens/main/GoalsScreen';
 import { ScheduleScreen } from '../screens/main/ScheduleScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
+import { FeedbackListScreen } from '../screens/main/FeedbackListScreen';
 import { Ionicons } from '@expo/vector-icons';
+import { FeedbackWidget } from '../components/FeedbackWidget';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -34,6 +36,8 @@ const MainTabs = () => (
           iconName = focused ? 'flag' : 'flag-outline';
         } else if (route.name === 'Schedule') {
           iconName = focused ? 'calendar' : 'calendar-outline';
+        } else if (route.name === 'Feedback') {
+          iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
         } else if (route.name === 'Profile') {
           iconName = focused ? 'person' : 'person-outline';
         } else {
@@ -50,6 +54,7 @@ const MainTabs = () => (
     <Tab.Screen name="Dashboard" component={DashboardScreen} />
     <Tab.Screen name="Goals" component={GoalsScreen} />
     <Tab.Screen name="Schedule" component={ScheduleScreen} />
+    <Tab.Screen name="Feedback" component={FeedbackListScreen} />
     <Tab.Screen name="Profile" component={ProfileScreen} />
   </Tab.Navigator>
 );
@@ -69,6 +74,7 @@ export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer>
       {user ? <MainTabs /> : <AuthStack />}
+      {user && <FeedbackWidget />}
     </NavigationContainer>
   );
 };
