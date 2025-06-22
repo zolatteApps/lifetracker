@@ -21,6 +21,7 @@ module.exports = async (req, res) => {
   if (req.method === 'POST') {
     return authMiddleware(async (req, res) => {
       try {
+        console.log('Categorize request received:', req.body);
         const { goalText } = req.body;
 
         if (!goalText || typeof goalText !== 'string') {
@@ -54,6 +55,8 @@ Respond with only one word: the category name in lowercase.`
         });
 
         const category = message.content[0].text.trim().toLowerCase();
+        console.log('AI response:', message.content[0].text);
+        console.log('Parsed category:', category);
         
         // Validate the category
         const validCategories = ['physical', 'mental', 'financial', 'social'];
