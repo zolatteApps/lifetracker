@@ -1,15 +1,55 @@
 import apiService from './api.service';
 import { API_ENDPOINTS } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class ScheduleService {
+  // Cache key prefix for schedule data
+  CACHE_KEY_PREFIX = '@schedule_cache_';
+
+  // Get cache key for a specific date
+  getCacheKey(date) {
+    return `${this.CACHE_KEY_PREFIX}${date}`;
+  }
+
+  // Get cached schedule for a date
+  async getCachedSchedule(date) {
+    try {
+      const cached = await AsyncStorage.getItem(this.getCacheKey(date));
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error('Error reading cache:', error);
+      return null;
+    }
+  }
+
+  // Save schedule to cache
+  async cacheSchedule(date, data) {
+    try {
+      await AsyncStorage.setItem(this.getCacheKey(date), JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Error saving to cache:', error);
+    }
+  }
+
   async getSchedule(date) {
     try {
       const response = await apiService.request(`/api/schedule/${date}`, {
         method: 'GET',
       });
+      // Cache the successful response
+      await this.cacheSchedule(date, response);
       return response;
     } catch (error) {
       console.error('Error fetching schedule:', error);
+      // Try to return cached data on error
+      const cached = await this.getCachedSchedule(date);
+      if (cached) {
+        console.log('Returning cached schedule due to error');
+        return cached.data;
+      }
       throw error;
     }
   }
