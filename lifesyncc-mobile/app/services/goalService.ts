@@ -21,7 +21,7 @@ export interface Goal {
 
 class GoalService {
   private async getAuthToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('token');
+    return await AsyncStorage.getItem('authToken');
   }
 
   private async makeRequest(url: string, options: RequestInit = {}) {
@@ -51,13 +51,13 @@ class GoalService {
     if (filters?.category) params.append('category', filters.category);
     if (filters?.completed !== undefined) params.append('completed', filters.completed.toString());
     
-    const url = `${API_URL}/goals${params.toString() ? `?${params.toString()}` : ''}`;
+    const url = `${API_URL}/api/goals${params.toString() ? `?${params.toString()}` : ''}`;
     const data = await this.makeRequest(url);
     return data.goals;
   }
 
   async createGoal(goal: Omit<Goal, '_id' | 'id' | 'createdAt' | 'updatedAt'>): Promise<Goal> {
-    const data = await this.makeRequest(`${API_URL}/goals`, {
+    const data = await this.makeRequest(`${API_URL}/api/goals`, {
       method: 'POST',
       body: JSON.stringify(goal),
     });
@@ -65,7 +65,7 @@ class GoalService {
   }
 
   async updateGoal(id: string, updates: Partial<Goal>): Promise<Goal> {
-    const data = await this.makeRequest(`${API_URL}/goals/${id}`, {
+    const data = await this.makeRequest(`${API_URL}/api/goals/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
@@ -73,13 +73,13 @@ class GoalService {
   }
 
   async deleteGoal(id: string): Promise<void> {
-    await this.makeRequest(`${API_URL}/goals/${id}`, {
+    await this.makeRequest(`${API_URL}/api/goals/${id}`, {
       method: 'DELETE',
     });
   }
 
   async updateProgress(id: string, progressData: { currentValue?: number; progress?: number }): Promise<Goal> {
-    const data = await this.makeRequest(`${API_URL}/goals/${id}/progress`, {
+    const data = await this.makeRequest(`${API_URL}/api/goals/${id}/progress`, {
       method: 'PUT',
       body: JSON.stringify(progressData),
     });
