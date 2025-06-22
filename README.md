@@ -20,7 +20,7 @@ LifeSync is a comprehensive life management application that helps you track and
 - Real-time progress updates
 
 ### 3. Daily Schedule
-- Automated schedule generation based on your goals
+- Automated schedule generation based on your goals.
 - Time-blocked activities from 7 AM to 10 PM
 - Visual current time indicator
 - Click to mark activities as complete
