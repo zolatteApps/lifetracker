@@ -8,7 +8,9 @@ import {
   RefreshControl,
   Alert,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,44 +31,6 @@ export const DashboardScreen: React.FC = () => {
   const [goalDetails, setGoalDetails] = useState<any>(null);
   const [isCreatingGoal, setIsCreatingGoal] = useState(false);
 
-  // Calculate statistics from goals
-  const getStats = () => {
-    const total = goals.length;
-    const completed = goals.filter(g => g.completed).length;
-    const inProgress = total - completed;
-    
-    return { total, completed, inProgress };
-  };
-
-  // Calculate category data from goals
-  const getCategoryData = () => {
-    const categoryMap = {
-      physical: { label: 'Physical', icon: 'fitness', color: '#10B981' },
-      mental: { label: 'Mental', icon: 'library', color: '#8B5CF6' },
-      financial: { label: 'Financial', icon: 'cash', color: '#F59E0B' },
-      social: { label: 'Social', icon: 'people', color: '#3B82F6' },
-    };
-
-    return Object.entries(categoryMap).map(([key, data]) => {
-      const categoryGoals = goals.filter(g => g.category === key);
-      
-      // Calculate average progress of all goals in category
-      let progress = 0;
-      if (categoryGoals.length > 0) {
-        const totalProgress = categoryGoals.reduce((sum, goal) => {
-          return sum + (goal.progress || 0);
-        }, 0);
-        progress = Math.round(totalProgress / categoryGoals.length);
-      }
-      
-      return {
-        key,
-        ...data,
-        goals: categoryGoals.length,
-        progress
-      };
-    });
-  };
 
   const fetchGoals = async () => {
     try {
@@ -312,119 +276,52 @@ export const DashboardScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'there'}!</Text>
-        <Text style={styles.subtitle}>Track your progress across all life areas</Text>
-      </View>
-
-      <View style={styles.aiGoalSection}>
-        <Text style={styles.aiGoalTitle}>What's your goal?</Text>
-        <Text style={styles.aiGoalSubtitle}>AI will automatically categorize it for you</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.goalInput}
-            placeholder="e.g., Run 5k every morning, Save $1000 monthly..."
-            placeholderTextColor="#9ca3af"
-            value={goalText}
-            onChangeText={setGoalText}
-            multiline
-            maxLength={200}
-            editable={!isProcessing}
-          />
-          <TouchableOpacity
-            style={[styles.addButton, isProcessing && styles.addButtonDisabled]}
-            onPress={handleAddGoal}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="sparkles" size={24} color="#fff" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{getStats().total}</Text>
-          <Text style={styles.statLabel}>Total Goals</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{getStats().completed}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{getStats().inProgress}</Text>
-          <Text style={styles.statLabel}>In Progress</Text>
-        </View>
-      </View>
-
-      <View style={styles.categoriesGrid}>
-        {getCategoryData().map((category) => (
-          <TouchableOpacity
-            key={category.key}
-            style={[styles.categoryCard, { borderTopColor: category.color }]}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Goals', { category: category.key })}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: category.color + '20' }]}>
-              <Ionicons
-                name={category.icon as any}
-                size={32}
-                color={category.color}
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.gradientContainer}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'dhruv'}!</Text>
+            <Text style={styles.subtitle}>Track your progress across all life areas</Text>
+            
+            <View style={styles.goalSection}>
+              <Text style={styles.goalTitle}>What's your goal?</Text>
+              <Text style={styles.goalSubtitle}>AI will automatically categorize it for you</Text>
+              
+              <TextInput
+                style={styles.goalInput}
+                placeholder="e.g., Run 5k every morning, Save $1000 monthly"
+                placeholderTextColor="#9CA3AF"
+                value={goalText}
+                onChangeText={setGoalText}
+                multiline
+                maxLength={200}
+                editable={!isProcessing}
               />
+              
+              <TouchableOpacity
+                style={[styles.achieveButton, isProcessing && styles.achieveButtonDisabled]}
+                onPress={handleAddGoal}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.achieveButtonText}>Achieve Your Goal</Text>
+                )}
+              </TouchableOpacity>
             </View>
-            <Text style={styles.categoryLabel}>{category.label}</Text>
-            <Text style={styles.goalCount}>{category.goals} active goals</Text>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${category.progress}%`,
-                    backgroundColor: category.color,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>{category.progress}% Complete</Text>
-          </TouchableOpacity>
-        ))}
+          </View>
+        </ScrollView>
       </View>
-
-      <View style={styles.quickActions}>
-        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Goals', { openAddModal: true })}
-        >
-          <Ionicons name="add-circle" size={24} color="#4F46E5" />
-          <Text style={styles.actionButtonText}>Add New Goal</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Schedule')}
-        >
-          <Ionicons name="calendar" size={24} color="#4F46E5" />
-          <Text style={styles.actionButtonText}>View Schedule</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Goals')}
-        >
-          <Ionicons name="stats-chart" size={24} color="#4F46E5" />
-          <Text style={styles.actionButtonText}>Check Progress</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
 
       {/* Schedule Preview Modal */}
       <SchedulePreviewModal
@@ -435,138 +332,62 @@ export const DashboardScreen: React.FC = () => {
         onCancel={handleCancelSchedule}
         loading={isCreatingGoal}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
-  header: {
-    padding: 24,
-    paddingTop: 48,
-    backgroundColor: '#fff',
+  gradientContainer: {
+    flex: 1,
+    backgroundColor: '#F0EBFF',
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
+    justifyContent: 'center',
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
+    fontSize: 17,
+    color: '#6B7280',
+    marginBottom: 48,
+    textAlign: 'center',
+    fontWeight: '400',
+    letterSpacing: 0.1,
+  },
+  goalSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  goalTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 10,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  goalSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    marginBottom: 8,
-  },
-  statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 12,
-  },
-  categoryCard: {
-    width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    margin: '1.5%',
-    borderTopWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  categoryLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  goalCount: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 3,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  quickActions: {
-    padding: 24,
-  },
-  quickActionsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    color: '#1f2937',
-    marginLeft: 12,
-    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 36,
+    textAlign: 'center',
+    letterSpacing: 0.1,
   },
   message: {
     fontSize: 18,
@@ -574,54 +395,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 100,
   },
-  aiGoalSection: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  aiGoalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  aiGoalSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
   goalInput: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     fontSize: 16,
-    color: '#1f2937',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    minHeight: 56,
-    maxHeight: 120,
-    marginRight: 12,
+    color: '#374151',
+    minHeight: 140,
+    maxHeight: 160,
+    marginBottom: 28,
+    textAlignVertical: 'top',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    width: '100%',
+    lineHeight: 24,
   },
-  addButton: {
-    backgroundColor: '#4F46E5',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
+  achieveButton: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 20,
+    paddingVertical: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+    width: '100%',
   },
-  addButtonDisabled: {
-    backgroundColor: '#9ca3af',
+  achieveButtonDisabled: {
+    backgroundColor: '#C4B5FD',
+    shadowOpacity: 0.1,
+  },
+  achieveButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });

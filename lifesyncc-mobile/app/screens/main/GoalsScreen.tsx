@@ -300,6 +300,67 @@ export const GoalsScreen: React.FC = () => {
         )}
       </View>
 
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{goals.length}</Text>
+          <Text style={styles.statLabel}>Total Goals</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{goals.filter(g => g.completed).length}</Text>
+          <Text style={styles.statLabel}>Completed</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{goals.filter(g => !g.completed).length}</Text>
+          <Text style={styles.statLabel}>In Progress</Text>
+        </View>
+      </View>
+
+      <View style={styles.categoriesGrid}>
+        {categories.map((category) => {
+          const categoryGoals = getCategoryGoals(category.key);
+          
+          // Calculate average progress
+          let progress = 0;
+          if (categoryGoals.length > 0) {
+            const totalProgress = categoryGoals.reduce((sum, goal) => {
+              return sum + (goal.progress || 0);
+            }, 0);
+            progress = Math.round(totalProgress / categoryGoals.length);
+          }
+          
+          return (
+            <TouchableOpacity
+              key={category.key}
+              style={[styles.categoryCard, { borderTopColor: category.color }]}
+              activeOpacity={0.7}
+              onPress={() => setFilterCategory(category.key)}
+            >
+              <View style={[styles.categoryCardIcon, { backgroundColor: category.color + '20' }]}>
+                <Ionicons
+                  name={category.icon as any}
+                  size={32}
+                  color={category.color}
+                />
+              </View>
+              <Text style={styles.categoryCardLabel}>{category.label}</Text>
+              <Text style={styles.categoryGoalCount}>{categoryGoals.length} active goals</Text>
+              <View style={styles.categoryProgressBar}>
+                <View
+                  style={[
+                    styles.categoryProgressFill,
+                    {
+                      width: `${progress}%`,
+                      backgroundColor: category.color,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.categoryProgressText}>{progress}% Complete</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {categories
         .filter(category => !filterCategory || category.key === filterCategory)
         .map((category) => {
@@ -634,5 +695,85 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 16,
+    marginBottom: 8,
+  },
+  statCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 12,
+  },
+  categoryCard: {
+    width: '47%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    margin: '1.5%',
+    borderTopWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  categoryCardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryCardLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  categoryGoalCount: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  categoryProgressBar: {
+    height: 6,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 3,
+    marginBottom: 8,
+  },
+  categoryProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  categoryProgressText: {
+    fontSize: 12,
+    color: '#6b7280',
   },
 });
