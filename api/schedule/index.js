@@ -29,6 +29,17 @@ async function handler(req, res) {
         return res.status(400).json({ error: 'Date and blocks are required' });
       }
       
+      // Validate blocks structure
+      for (const block of blocks) {
+        if (!block.id || !block.title || !block.category || !block.startTime || !block.endTime) {
+          console.error('Invalid block structure:', block);
+          return res.status(400).json({ 
+            error: 'Invalid block structure. Required fields: id, title, category, startTime, endTime',
+            invalidBlock: block 
+          });
+        }
+      }
+      
       const schedule = await Schedule.findOneAndUpdate(
         { userId, date },
         { userId, date, blocks },

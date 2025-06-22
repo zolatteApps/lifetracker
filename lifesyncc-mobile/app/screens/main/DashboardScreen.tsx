@@ -202,6 +202,8 @@ export const DashboardScreen: React.FC = () => {
 
   const createScheduleFromProposal = async (proposedSchedule: any, goal: Goal) => {
     const today = new Date();
+    let createdCount = 0;
+    let errors = [];
     
     for (const session of proposedSchedule.sessions) {
       // Create schedule entries based on frequency
@@ -214,7 +216,13 @@ export const DashboardScreen: React.FC = () => {
           // Check if this day is included
           const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
           if (session.days.includes(dayName)) {
-            await createScheduleEntry(date, session, goal);
+            try {
+              await createScheduleEntry(date, session, goal);
+              createdCount++;
+            } catch (error) {
+              console.error(`Failed to create schedule entry for ${date.toDateString()}:`, error);
+              errors.push({ date: date.toDateString(), error });
+            }
           }
         }
       } else if (session.frequency === 'weekly') {
@@ -225,12 +233,24 @@ export const DashboardScreen: React.FC = () => {
         while (occurrences < session.totalOccurrences) {
           const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getDay()];
           if (session.days.includes(dayName)) {
-            await createScheduleEntry(currentDate, session, goal);
-            occurrences++;
+            try {
+              await createScheduleEntry(currentDate, session, goal);
+              createdCount++;
+              occurrences++;
+            } catch (error) {
+              console.error(`Failed to create schedule entry for ${currentDate.toDateString()}:`, error);
+              errors.push({ date: currentDate.toDateString(), error });
+              occurrences++; // Still increment to avoid infinite loop
+            }
           }
           currentDate.setDate(currentDate.getDate() + 1);
         }
       }
+    }
+    
+    console.log(`Created ${createdCount} schedule entries`);
+    if (errors.length > 0) {
+      console.error(`Failed to create ${errors.length} entries:`, errors);
     }
   };
 
@@ -241,10 +261,11 @@ export const DashboardScreen: React.FC = () => {
       id: scheduleService.generateBlockId(),
       startTime: session.time,
       endTime: calculateEndTime(session.time, session.duration),
-      activity: session.activity,
+      title: session.activity, // Changed from 'activity' to 'title' to match backend schema
       category: goal.category,
       goalId: goal._id || goal.id,
-      completed: false
+      completed: false,
+      recurring: false // Added to match backend schema
     };
 
     try {
@@ -259,6 +280,8 @@ export const DashboardScreen: React.FC = () => {
       await scheduleService.updateSchedule(dateStr, blocks);
     } catch (error) {
       console.error('Error creating schedule entry:', error);
+      // Re-throw to propagate error to caller
+      throw error;
     }
   };
 

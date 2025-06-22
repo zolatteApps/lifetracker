@@ -168,10 +168,11 @@ export const GoalsScreen: React.FC = () => {
       id: scheduleService.generateBlockId(),
       startTime: session.time,
       endTime: calculateEndTime(session.time, session.duration),
-      activity: session.activity,
+      title: session.activity, // Changed from 'activity' to 'title' to match backend schema
       category: goal.category,
       goalId: goal._id || goal.id,
-      completed: false
+      completed: false,
+      recurring: false // Added to match backend schema
     };
 
     try {
@@ -186,6 +187,8 @@ export const GoalsScreen: React.FC = () => {
       await scheduleService.updateSchedule(dateStr, blocks);
     } catch (error) {
       console.error('Error creating schedule entry:', error);
+      // Re-throw to propagate error to caller
+      throw error;
     }
   };
 

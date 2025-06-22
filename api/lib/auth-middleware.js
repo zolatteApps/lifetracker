@@ -5,6 +5,7 @@ const verifyToken = (handler) => async (req, res) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
     if (!token) {
+      console.error('No token provided in request');
       return res.status(401).json({ error: 'Please authenticate' });
     }
 
@@ -14,6 +15,7 @@ const verifyToken = (handler) => async (req, res) => {
     
     return handler(req, res);
   } catch (error) {
+    console.error('Token verification error:', error.message);
     return res.status(401).json({ error: 'Please authenticate' });
   }
 };
