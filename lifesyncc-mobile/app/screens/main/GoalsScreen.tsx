@@ -64,6 +64,21 @@ export const GoalsScreen: React.FC = () => {
     }
   }, [user]);
 
+  // Handle navigation params
+  useEffect(() => {
+    if (route.params?.openAddModal && route.params?.prefillData) {
+      const categoryData = categories.find(c => c.key === route.params.prefillData.category);
+      if (categoryData) {
+        setSelectedCategory(categoryData);
+        setModalVisible(true);
+      }
+      // Clear params to prevent re-opening
+      navigation.setParams({ openAddModal: false, prefillData: null });
+    } else if (route.params?.category) {
+      setFilterCategory(route.params.category);
+    }
+  }, [route.params]);
+
   useFocusEffect(
     useCallback(() => {
       if (user) {
@@ -298,6 +313,7 @@ export const GoalsScreen: React.FC = () => {
               setSelectedCategory(null);
             }}
             onSave={handleCreateGoal}
+            prefillData={route.params?.prefillData}
           />
           <GoalProgressModal
             visible={progressModalVisible}

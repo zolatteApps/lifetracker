@@ -6,7 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Alert
+  Alert,
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +21,8 @@ export const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [goalText, setGoalText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Calculate statistics from goals
   const getStats = () => {
@@ -83,6 +87,51 @@ export const DashboardScreen: React.FC = () => {
     fetchGoals();
   };
 
+  const handleAddGoal = async () => {
+    if (!goalText.trim()) {
+      Alert.alert('Error', 'Please enter a goal');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // First, get AI categorization
+      const response = await fetch(`${goalService.API_URL}/api/goals/categorize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await goalService.getToken()}`
+        },
+        body: JSON.stringify({ goalText: goalText.trim() })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to categorize goal');
+      }
+
+      const { category } = await response.json();
+
+      // Navigate to Goals screen with pre-filled data
+      navigation.navigate('Goals', { 
+        openAddModal: true,
+        prefillData: {
+          title: goalText.trim(),
+          category: category,
+          description: goalText.trim()
+        }
+      });
+
+      // Clear the input
+      setGoalText('');
+      
+    } catch (error) {
+      console.error('Error adding goal:', error);
+      Alert.alert('Error', 'Failed to process your goal. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (!user) {
     return (
       <View style={styles.container}>
@@ -101,6 +150,34 @@ export const DashboardScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'there'}!</Text>
         <Text style={styles.subtitle}>Track your progress across all life areas</Text>
+      </View>
+
+      <View style={styles.aiGoalSection}>
+        <Text style={styles.aiGoalTitle}>What's your goal?</Text>
+        <Text style={styles.aiGoalSubtitle}>AI will automatically categorize it for you</Text>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.goalInput}
+            placeholder="e.g., Run 5k every morning, Save $1000 monthly..."
+            placeholderTextColor="#9ca3af"
+            value={goalText}
+            onChangeText={setGoalText}
+            multiline
+            maxLength={200}
+            editable={!isProcessing}
+          />
+          <TouchableOpacity
+            style={[styles.addButton, isProcessing && styles.addButtonDisabled]}
+            onPress={handleAddGoal}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="sparkles" size={24} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.statsContainer}>
@@ -313,5 +390,55 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     marginTop: 100,
+  },
+  aiGoalSection: {
+    backgroundColor: '#fff',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  aiGoalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  aiGoalSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 16,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  goalInput: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    minHeight: 56,
+    maxHeight: 120,
+    marginRight: 12,
+  },
+  addButton: {
+    backgroundColor: '#4F46E5',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonDisabled: {
+    backgroundColor: '#9ca3af',
   },
 });
