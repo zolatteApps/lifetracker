@@ -35,6 +35,7 @@ export const GoalsScreen: React.FC = () => {
   const [progressModalVisible, setProgressModalVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [modalPrefillData, setModalPrefillData] = useState<any>(null);
 
   const fetchGoals = async () => {
     try {
@@ -67,9 +68,11 @@ export const GoalsScreen: React.FC = () => {
   // Handle navigation params
   useEffect(() => {
     if (route.params?.openAddModal && route.params?.prefillData) {
+      console.log('GoalsScreen: Received prefillData:', route.params.prefillData);
       const categoryData = categories.find(c => c.key === route.params.prefillData.category);
       if (categoryData) {
         setSelectedCategory(categoryData);
+        setModalPrefillData(route.params.prefillData);
         setModalVisible(true);
       }
       // Clear params to prevent re-opening
@@ -111,6 +114,7 @@ export const GoalsScreen: React.FC = () => {
 
   const openGoalModal = (category: typeof categories[0]) => {
     setSelectedCategory(category);
+    setModalPrefillData(null); // Clear any previous prefill data
     setModalVisible(true);
   };
 
@@ -311,9 +315,10 @@ export const GoalsScreen: React.FC = () => {
             onClose={() => {
               setModalVisible(false);
               setSelectedCategory(null);
+              setModalPrefillData(null);
             }}
             onSave={handleCreateGoal}
-            prefillData={route.params?.prefillData}
+            prefillData={modalPrefillData}
           />
           <GoalProgressModal
             visible={progressModalVisible}

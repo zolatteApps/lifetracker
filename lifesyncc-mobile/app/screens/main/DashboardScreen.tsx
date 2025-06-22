@@ -110,6 +110,7 @@ export const DashboardScreen: React.FC = () => {
       }
 
       const goalDetails = await response.json();
+      console.log('DashboardScreen: AI response:', goalDetails);
 
       // Navigate to Goals screen with pre-filled data
       navigation.navigate('Goals', { 

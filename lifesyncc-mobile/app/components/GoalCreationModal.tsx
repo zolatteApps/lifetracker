@@ -56,6 +56,7 @@ export const GoalCreationModal: React.FC<GoalCreationModalProps> = ({
   // Handle prefill data when modal opens
   useEffect(() => {
     if (visible && prefillData) {
+      console.log('GoalCreationModal: Prefilling data:', prefillData);
       setTitle(prefillData.title);
       setDescription(prefillData.description);
       
@@ -77,6 +78,8 @@ export const GoalCreationModal: React.FC<GoalCreationModalProps> = ({
       if (prefillData.currentValue !== undefined) {
         setCurrentValue(prefillData.currentValue.toString());
       }
+    } else if (visible) {
+      console.log('GoalCreationModal: No prefillData available');
     }
   }, [visible, prefillData]);
 
