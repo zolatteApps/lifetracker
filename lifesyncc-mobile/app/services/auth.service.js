@@ -19,11 +19,12 @@ class AuthService {
     }
   }
 
-  async register(email, password) {
+  async register(email, password, name) {
     try {
       const response = await apiService.post(API_ENDPOINTS.auth.register, {
         email,
         password,
+        name,
       });
       
       if (response.token) {

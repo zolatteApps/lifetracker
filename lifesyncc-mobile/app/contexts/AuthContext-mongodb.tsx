@@ -24,7 +24,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string) => Promise<void>;
   signInWithPhone: (phoneNumber: string, otp: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
@@ -89,13 +89,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string) => {
-    console.log('Signing up user:', email);
+  const signUp = async (email: string, password: string, name?: string) => {
+    console.log('Signing up user:', email, 'with name:', name);
     try {
       setError(null);
       
-      const response = await authService.register(email, password);
+      const response = await authService.register(email, password, name);
       console.log('Sign up successful:', response.user);
+      console.log('User isOnboardingCompleted:', response.user?.isOnboardingCompleted);
       setUser(response.user);
     } catch (error: any) {
       console.error('Sign up error:', error);

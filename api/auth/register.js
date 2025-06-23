@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
   try {
     await connectDB();
     
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -40,6 +40,7 @@ module.exports = async function handler(req, res) {
     const user = new User({
       email,
       password: hashedPassword,
+      name: name || undefined, // Optional name field
       isOnboardingCompleted: false,
     });
 
@@ -58,6 +59,7 @@ module.exports = async function handler(req, res) {
       user: {
         id: user._id,
         email: user.email,
+        name: user.name,
         isOnboardingCompleted: user.isOnboardingCompleted,
         createdAt: user.createdAt,
       },

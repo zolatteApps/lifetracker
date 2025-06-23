@@ -61,11 +61,12 @@ export const RegisterScreen: React.FC = () => {
       setLoading(true);
       await signUp(email.trim().toLowerCase(), password, name.trim());
       // Navigation will happen automatically via AuthContext
-      Alert.alert(
-        'Welcome to LifeSync!', 
-        'Your account has been created successfully. Start tracking your goals now!',
-        [{ text: 'Get Started', style: 'default' }]
-      );
+      // Comment out the alert temporarily to see if it's blocking navigation
+      // Alert.alert(
+      //   'Welcome to LifeSync!', 
+      //   'Your account has been created successfully. Start tracking your goals now!',
+      //   [{ text: 'Get Started', style: 'default' }]
+      // );
     } catch (error: any) {
       console.error('Registration error:', error);
       
