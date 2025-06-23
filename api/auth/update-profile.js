@@ -3,6 +3,12 @@ const { verifyToken } = require('../lib/auth-middleware');
 const connectDB = require('../lib/mongodb');
 
 const updateProfileHandler = async (req, res) => {
+  console.log('Update profile handler called');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', req.headers);
+  console.log('Request body type:', typeof req.body);
+  console.log('Request body:', req.body);
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,7 +31,19 @@ const updateProfileHandler = async (req, res) => {
     await connectDB();
     
     const userId = req.userId;
-    const { name, age, gender, height, isOnboardingCompleted, profileCompletedAt } = req.body;
+    
+    // Parse body if it's a string
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (parseError) {
+        console.error('Error parsing request body:', parseError);
+        return res.status(400).json({ error: 'Invalid JSON in request body' });
+      }
+    }
+    
+    const { name, age, gender, height, isOnboardingCompleted, profileCompletedAt } = body;
 
     // Validate input
     if (age && (age < 18 || age > 120)) {
