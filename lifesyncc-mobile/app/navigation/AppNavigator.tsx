@@ -88,6 +88,13 @@ export const AppNavigator: React.FC = () => {
   }
 
   const shouldShowOnboarding = user && !user.isOnboardingCompleted;
+  
+  // Debug logging
+  console.log('AppNavigator Debug:', {
+    user: user,
+    isOnboardingCompleted: user?.isOnboardingCompleted,
+    shouldShowOnboarding: shouldShowOnboarding
+  });
 
   return (
     <NavigationContainer>
