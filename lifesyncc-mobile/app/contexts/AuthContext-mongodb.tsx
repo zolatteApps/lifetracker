@@ -5,6 +5,8 @@ import apiService from '../services/api.service';
 interface User {
   id: string;
   email: string;
+  phoneNumber?: string;
+  isPhoneVerified?: boolean;
   createdAt: string;
 }
 
@@ -14,6 +16,7 @@ interface AuthContextType {
   error: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithPhone: (phoneNumber: string, otp: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -92,6 +95,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithPhone = async (phoneNumber: string, otp: string) => {
+    console.log('Signing in with phone:', phoneNumber);
+    try {
+      setError(null);
+      
+      const response = await authService.verifyOTP(phoneNumber, otp);
+      console.log('Phone sign in successful:', response.user);
+      setUser(response.user);
+    } catch (error: any) {
+      console.error('Phone sign in error:', error);
+      setError(error.message || 'Failed to verify OTP');
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
       setLoading(true);
@@ -114,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     signIn,
     signUp,
+    signInWithPhone,
     signOut,
     clearError,
   };

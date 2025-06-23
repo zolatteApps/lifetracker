@@ -6,6 +6,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext-mongodb';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
+import { PhoneLoginScreen } from '../screens/auth/PhoneLoginScreen';
+import { VerifyOTPScreen } from '../screens/auth/VerifyOTPScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { GoalsScreen } from '../screens/main/GoalsScreen';
 import { ScheduleScreen } from '../screens/main/ScheduleScreen';
@@ -20,6 +22,8 @@ const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
+    <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
   </Stack.Navigator>
 );
 

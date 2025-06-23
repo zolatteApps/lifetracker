@@ -55,6 +55,35 @@ class AuthService {
     const token = await apiService.getAuthToken();
     return !!token;
   }
+
+  async sendOTP(phoneNumber) {
+    try {
+      const response = await apiService.post(API_ENDPOINTS.auth.sendOTP, {
+        phoneNumber,
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async verifyOTP(phoneNumber, otp) {
+    try {
+      const response = await apiService.post(API_ENDPOINTS.auth.verifyOTP, {
+        phoneNumber,
+        otp,
+      });
+      
+      if (response.token) {
+        await apiService.setAuthToken(response.token);
+      }
+      
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
-export default new AuthService();
+export const authService = new AuthService();
+export default authService;

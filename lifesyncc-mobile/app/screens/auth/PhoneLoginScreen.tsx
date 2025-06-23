@@ -12,48 +12,54 @@ import {
   ScrollView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../contexts/AuthContext-mongodb';
+import { authService } from '../../services/auth.service';
 
-export const LoginScreen: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const PhoneLoginScreen: React.FC = () => {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
   const navigation = useNavigation<any>();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+  const formatPhoneNumber = (text: string) => {
+    // Remove all non-numeric characters
+    const cleaned = text.replace(/\D/g, '');
+    
+    // Format as US phone number (adjust for other countries)
+    if (cleaned.length <= 3) {
+      return cleaned;
+    } else if (cleaned.length <= 6) {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
+    } else {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    }
+  };
+
+  const handleSendOTP = async () => {
+    const cleanedPhone = phoneNumber.replace(/\D/g, '');
+    
+    if (!cleanedPhone || cleanedPhone.length < 10) {
+      Alert.alert('Error', 'Please enter a valid phone number');
       return;
     }
 
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
+    const fullPhoneNumber = `${countryCode}${cleanedPhone}`;
 
     try {
       setLoading(true);
-      await signIn(email.trim().toLowerCase(), password);
-      // Navigation will happen automatically via AuthContext
+      await authService.sendOTP(fullPhoneNumber);
+      
+      // Navigate to OTP verification screen
+      navigation.navigate('VerifyOTP', { phoneNumber: fullPhoneNumber });
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Send OTP error:', error);
       
-      let errorMessage = 'Login failed. Please try again.';
+      let errorMessage = 'Failed to send OTP. Please try again.';
       
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email. Please sign up first.';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password. Please try again.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Please enter a valid email address.';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed attempts. Please try again later.';
-      } else if (error.message) {
+      if (error.message) {
         errorMessage = error.message;
       }
       
-      Alert.alert('Login Failed', errorMessage);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -69,49 +75,39 @@ export const LoginScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to LifeSync</Text>
+          <Text style={styles.title}>Phone Login</Text>
+          <Text style={styles.subtitle}>Enter your phone number to continue</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!loading}
-              autoComplete="email"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!loading}
-              autoComplete="password"
-            />
+            <Text style={styles.label}>Phone Number</Text>
+            <View style={styles.phoneInputContainer}>
+              <TouchableOpacity style={styles.countryCodeButton}>
+                <Text style={styles.countryCodeText}>{countryCode}</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={styles.phoneInput}
+                placeholder="123-456-7890"
+                placeholderTextColor="#999"
+                value={phoneNumber}
+                onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
+                keyboardType="phone-pad"
+                editable={!loading}
+                maxLength={12}
+              />
+            </View>
           </View>
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
+            onPress={handleSendOTP}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={styles.buttonText}>Send OTP</Text>
             )}
           </TouchableOpacity>
 
@@ -122,12 +118,11 @@ export const LoginScreen: React.FC = () => {
           </View>
 
           <TouchableOpacity
-            style={styles.phoneButton}
-            onPress={() => navigation.navigate('PhoneLogin')}
+            style={styles.emailButton}
+            onPress={() => navigation.navigate('Login')}
             disabled={loading}
           >
-            <Text style={styles.phoneIcon}>📱</Text>
-            <Text style={styles.phoneButtonText}>Sign in with Phone</Text>
+            <Text style={styles.emailButtonText}>Sign in with Email</Text>
           </TouchableOpacity>
 
           <View style={styles.footer}>
@@ -138,16 +133,6 @@ export const LoginScreen: React.FC = () => {
               <Text style={styles.linkText}>
                 Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert('Reset Password', 'Password reset feature coming soon!');
-              }}
-              disabled={loading}
-              style={styles.forgotButton}
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -180,6 +165,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#6b7280',
+    textAlign: 'center',
   },
   form: {
     width: '100%',
@@ -193,14 +179,31 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
   },
-  input: {
+  phoneInputContainer: {
+    flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    overflow: 'hidden',
+  },
+  countryCodeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRightWidth: 1,
+    borderRightColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+  },
+  countryCodeText: {
+    fontSize: 16,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  phoneInput: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
     color: '#1f2937',
   },
   button: {
@@ -224,30 +227,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  footer: {
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#6b7280',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  linkTextBold: {
-    color: '#4f46e5',
-    fontWeight: '600',
-  },
-  forgotButton: {
-    marginTop: 16,
-  },
-  forgotText: {
-    color: '#4f46e5',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: 24,
   },
   dividerLine: {
     flex: 1,
@@ -259,24 +242,30 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 14,
   },
-  phoneButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  emailButton: {
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 16,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e5e7eb',
     marginBottom: 24,
   },
-  phoneIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  phoneButtonText: {
+  emailButtonText: {
     color: '#4f46e5',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  footer: {
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#6b7280',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  linkTextBold: {
+    color: '#4f46e5',
     fontWeight: '600',
   },
 });

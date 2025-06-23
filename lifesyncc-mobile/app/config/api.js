@@ -8,5 +8,7 @@ export const API_ENDPOINTS = {
     login: '/api/auth/login',
     register: '/api/auth/register',
     user: '/api/auth/user',
+    sendOTP: '/api/auth/send-otp',
+    verifyOTP: '/api/auth/verify-otp',
   },
 };

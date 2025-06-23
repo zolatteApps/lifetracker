@@ -10,7 +10,22 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() {
+      return !this.phoneNumber;
+    },
+  },
+  phoneNumber: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+  },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false,
+  },
+  phoneVerifiedAt: {
+    type: Date,
   },
   createdAt: {
     type: Date,
