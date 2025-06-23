@@ -1,8 +1,8 @@
 const User = require('../models/User');
-const authMiddleware = require('../lib/auth-middleware');
+const { verifyToken } = require('../lib/auth-middleware');
 const connectDB = require('../lib/mongodb');
 
-module.exports = async function handler(req, res) {
+const updateProfileHandler = async (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,16 +16,6 @@ module.exports = async function handler(req, res) {
     res.status(200).end();
     return;
   }
-
-  // Apply auth middleware
-  await new Promise((resolve, reject) => {
-    authMiddleware(req, res, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  }).catch((err) => {
-    return res.status(401).json({ error: 'Unauthorized' });
-  });
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -90,4 +80,6 @@ module.exports = async function handler(req, res) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
-}
+};
+
+module.exports = verifyToken(updateProfileHandler);
