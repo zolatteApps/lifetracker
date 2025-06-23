@@ -76,7 +76,8 @@ module.exports = async function handler(req, res) {
         phoneNumber,
         isPhoneVerified: true,
         phoneVerifiedAt: new Date(),
-        email: `${phoneNumber}@phone.local` // Placeholder email
+        email: `${phoneNumber}@phone.local`, // Placeholder email
+        isOnboardingCompleted: false
       });
     } else {
       // Update existing user
@@ -100,9 +101,16 @@ module.exports = async function handler(req, res) {
       token,
       user: {
         id: user._id,
-        phoneNumber: user.phoneNumber,
         email: user.email,
-        isPhoneVerified: user.isPhoneVerified
+        phoneNumber: user.phoneNumber,
+        isPhoneVerified: user.isPhoneVerified,
+        name: user.name,
+        age: user.age,
+        gender: user.gender,
+        height: user.height,
+        isOnboardingCompleted: user.isOnboardingCompleted,
+        profileCompletedAt: user.profileCompletedAt,
+        createdAt: user.createdAt
       }
     });
 

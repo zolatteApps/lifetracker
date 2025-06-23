@@ -52,6 +52,14 @@ module.exports = async function handler(req, res) {
       user: {
         id: user._id,
         email: user.email,
+        phoneNumber: user.phoneNumber,
+        isPhoneVerified: user.isPhoneVerified,
+        name: user.name,
+        age: user.age,
+        gender: user.gender,
+        height: user.height,
+        isOnboardingCompleted: user.isOnboardingCompleted,
+        profileCompletedAt: user.profileCompletedAt,
         createdAt: user.createdAt,
       },
     });

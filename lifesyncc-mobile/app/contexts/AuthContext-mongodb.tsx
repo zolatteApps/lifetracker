@@ -7,6 +7,15 @@ interface User {
   email: string;
   phoneNumber?: string;
   isPhoneVerified?: boolean;
+  name?: string;
+  age?: number;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  height?: {
+    value: number;
+    unit: 'cm' | 'ft';
+  };
+  isOnboardingCompleted?: boolean;
+  profileCompletedAt?: string;
   createdAt: string;
 }
 
