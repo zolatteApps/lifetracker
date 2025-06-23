@@ -5,6 +5,7 @@ import { RouteProp } from '@react-navigation/native';
 import { OnboardingStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import apiService from '../../services/api.service';
+import authService from '../../services/auth.service';
 
 type HeightInputScreenNavigationProp = StackNavigationProp<OnboardingStackParamList, 'HeightInput'>;
 type HeightInputScreenRouteProp = RouteProp<OnboardingStackParamList, 'HeightInput'>;
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export default function HeightInputScreen({ navigation, route }: Props) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [height, setHeight] = useState('');
   const [unit, setUnit] = useState<'cm' | 'ft'>('cm');
   const [feet, setFeet] = useState('');
@@ -61,13 +62,12 @@ export default function HeightInputScreen({ navigation, route }: Props) {
       };
 
       // Update user profile via API
-      await apiService.post('/auth/update-profile', onboardingData);
-
-      // Navigate to main app
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' as any }],
-      });
+      const response = await apiService.post('/auth/update-profile', onboardingData);
+      
+      // Refresh user data in auth context
+      await refreshUser();
+      
+      // The AppNavigator will automatically navigate to Main when user.isOnboardingCompleted becomes true
     } catch (error) {
       console.error('Error saving profile:', error);
       Alert.alert(

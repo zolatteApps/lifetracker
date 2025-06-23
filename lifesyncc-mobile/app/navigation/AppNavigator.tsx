@@ -87,13 +87,17 @@ export const AppNavigator: React.FC = () => {
     );
   }
 
-  const shouldShowOnboarding = user && !user.isOnboardingCompleted;
+  // Check if user needs onboarding - only for new users with explicitly false value
+  const needsOnboarding = user && user.isOnboardingCompleted === false;
   
   // Debug logging
   console.log('AppNavigator Debug:', {
-    user: user,
+    hasUser: !!user,
+    userId: user?.id,
     isOnboardingCompleted: user?.isOnboardingCompleted,
-    shouldShowOnboarding: shouldShowOnboarding
+    isOnboardingCompletedType: typeof user?.isOnboardingCompleted,
+    needsOnboarding: needsOnboarding,
+    userObject: JSON.stringify(user)
   });
 
   return (
@@ -101,7 +105,7 @@ export const AppNavigator: React.FC = () => {
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <RootStack.Screen name="Auth" component={AuthStack} />
-        ) : shouldShowOnboarding ? (
+        ) : needsOnboarding ? (
           <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
           <RootStack.Screen name="Main" component={MainTabs} />
