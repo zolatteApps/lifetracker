@@ -55,6 +55,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Delete any existing OTP for this phone number
+    await OTPVerification.deleteMany({ phoneNumber });
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
