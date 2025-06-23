@@ -40,6 +40,7 @@ module.exports = async function handler(req, res) {
     const user = new User({
       email,
       password: hashedPassword,
+      isOnboardingCompleted: false,
     });
 
     await user.save();
@@ -57,6 +58,7 @@ module.exports = async function handler(req, res) {
       user: {
         id: user._id,
         email: user.email,
+        isOnboardingCompleted: user.isOnboardingCompleted,
         createdAt: user.createdAt,
       },
     });

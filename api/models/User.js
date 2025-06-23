@@ -27,6 +27,37 @@ const userSchema = new mongoose.Schema({
   phoneVerifiedAt: {
     type: Date,
   },
+  // Profile fields
+  name: {
+    type: String,
+    trim: true,
+  },
+  age: {
+    type: Number,
+    min: 18,
+    max: 120,
+  },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+  },
+  height: {
+    value: {
+      type: Number,
+    },
+    unit: {
+      type: String,
+      enum: ['cm', 'ft'],
+      default: 'cm',
+    },
+  },
+  isOnboardingCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  profileCompletedAt: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

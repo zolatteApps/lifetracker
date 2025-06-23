@@ -14,7 +14,10 @@ import { ScheduleScreen } from '../screens/main/ScheduleScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { FeedbackListScreen } from '../screens/main/FeedbackListScreen';
 import { Ionicons } from '@expo/vector-icons';
+import OnboardingNavigator from './OnboardingNavigator';
+import { RootStackParamList } from './types';
 
+const RootStack = createStackNavigator<RootStackParamList>();
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -84,9 +87,19 @@ export const AppNavigator: React.FC = () => {
     );
   }
 
+  const shouldShowOnboarding = user && !user.isOnboardingCompleted;
+
   return (
     <NavigationContainer>
-      {user ? <MainTabs /> : <AuthStack />}
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        {!user ? (
+          <RootStack.Screen name="Auth" component={AuthStack} />
+        ) : shouldShowOnboarding ? (
+          <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
+        ) : (
+          <RootStack.Screen name="Main" component={MainTabs} />
+        )}
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 };
