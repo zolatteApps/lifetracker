@@ -17,7 +17,7 @@ LifeSync is a comprehensive life management application that helps you track and
 ### 2. Dashboard
 - Visual progress tracking for each category
 - Interactive action items with priority levels
-- Real-time progress updates
+- Real-time progress updates.
 
 ### 3. Daily Schedule
 - Automated schedule generation based on your goals.
