@@ -9,14 +9,35 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ScrollView
+  ScrollView,
+  Modal,
+  FlatList
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { authService } from '../../services/auth.service';
 
+const COUNTRY_CODES = [
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'India', code: '+91', flag: '🇮🇳' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'Canada', code: '+1', flag: '🇨🇦' },
+  { name: 'Australia', code: '+61', flag: '🇦🇺' },
+  { name: 'Germany', code: '+49', flag: '🇩🇪' },
+  { name: 'France', code: '+33', flag: '🇫🇷' },
+  { name: 'Japan', code: '+81', flag: '🇯🇵' },
+  { name: 'China', code: '+86', flag: '🇨🇳' },
+  { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+  { name: 'Mexico', code: '+52', flag: '🇲🇽' },
+  { name: 'South Korea', code: '+82', flag: '🇰🇷' },
+  { name: 'Spain', code: '+34', flag: '🇪🇸' },
+  { name: 'Italy', code: '+39', flag: '🇮🇹' },
+  { name: 'Russia', code: '+7', flag: '🇷🇺' },
+];
+
 export const PhoneLoginScreen: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
 
@@ -42,7 +63,7 @@ export const PhoneLoginScreen: React.FC = () => {
       return;
     }
 
-    const fullPhoneNumber = `${countryCode}${cleanedPhone}`;
+    const fullPhoneNumber = `${selectedCountry.code}${cleanedPhone}`;
 
     try {
       setLoading(true);
@@ -83,8 +104,11 @@ export const PhoneLoginScreen: React.FC = () => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Phone Number</Text>
             <View style={styles.phoneInputContainer}>
-              <TouchableOpacity style={styles.countryCodeButton}>
-                <Text style={styles.countryCodeText}>{countryCode}</Text>
+              <TouchableOpacity 
+                style={styles.countryCodeButton}
+                onPress={() => setShowCountryPicker(true)}
+              >
+                <Text style={styles.countryCodeText}>{selectedCountry.flag} {selectedCountry.code}</Text>
               </TouchableOpacity>
               <TextInput
                 style={styles.phoneInput}
@@ -137,6 +161,43 @@ export const PhoneLoginScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showCountryPicker}
+        animationType="slide"
+        transparent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Country</Text>
+              <TouchableOpacity
+                onPress={() => setShowCountryPicker(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={COUNTRY_CODES}
+              keyExtractor={(item) => item.name}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.countryItem}
+                  onPress={() => {
+                    setSelectedCountry(item);
+                    setShowCountryPicker(false);
+                  }}
+                >
+                  <Text style={styles.countryItemText}>
+                    {item.flag} {item.name} ({item.code})
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -267,5 +328,46 @@ const styles = StyleSheet.create({
   linkTextBold: {
     color: '#4f46e5',
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: '#6b7280',
+  },
+  countryItem: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  countryItemText: {
+    fontSize: 16,
+    color: '#1f2937',
   },
 });

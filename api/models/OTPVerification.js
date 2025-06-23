@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const otpVerificationSchema = new mongoose.Schema({
   phoneNumber: {
@@ -30,4 +30,4 @@ otpVerificationSchema.index({ phoneNumber: 1, otp: 1 });
 
 const OTPVerification = mongoose.models.OTPVerification || mongoose.model('OTPVerification', otpVerificationSchema);
 
-export default OTPVerification;
+module.exports = OTPVerification;
