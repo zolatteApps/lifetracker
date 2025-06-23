@@ -1,7 +1,22 @@
 const User = require('../models/User');
 const authMiddleware = require('../lib/auth-middleware');
+const connectDB = require('../lib/mongodb');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   // Apply auth middleware
   await new Promise((resolve, reject) => {
     authMiddleware(req, res, (err) => {
@@ -17,6 +32,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    await connectDB();
+    
     const userId = req.userId;
     const { name, age, gender, height, isOnboardingCompleted, profileCompletedAt } = req.body;
 
