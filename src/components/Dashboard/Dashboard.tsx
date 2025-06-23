@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, Goal } from '../../types';
+import { UserProfile, Goal, User } from '../../types';
 import CategoryCard from './CategoryCard';
 import DailySchedule from '../Schedule/DailySchedule';
 import CheckInModal from '../CheckIn/CheckInModal';
 import GoalModal from '../Goals/GoalModal';
 import UserProfileComponent from '../UserProfile/UserProfile';
-import { Calendar, Target, BarChart3, Clock } from 'lucide-react';
+import { Calendar, Target, BarChart3, Clock, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface DashboardProps {
   userProfile: UserProfile;
@@ -18,6 +19,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'physical' | 'mental' | 'financial' | 'social'>('physical');
   const [lastCheckIn, setLastCheckIn] = useState<Date | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const savedGoals = localStorage.getItem('userGoals');
@@ -30,6 +32,12 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
         ...(goal.dueDate && { dueDate: new Date(goal.dueDate) })
       }));
       setGoals(goalsWithDates);
+    }
+
+    // Load user data
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
     }
   }, []);
 
@@ -97,6 +105,15 @@ const Dashboard: React.FC<DashboardProps> = ({ userProfile }) => {
               <h1 className="text-2xl font-bold text-gray-900">LifeSync Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
+              {user?.role === 'admin' && (
+                <Link
+                  to="/admin"
+                  className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <Shield className="w-5 h-5 mr-2" />
+                  Admin Panel
+                </Link>
+              )}
               <button
                 onClick={() => setShowSchedule(!showSchedule)}
                 className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"

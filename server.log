@@ -1,0 +1,24 @@
+API server running on http://localhost:5000
+Admin auth error: MongooseError: Operation `users.findOne()` buffering timed out after 10000ms
+    at Timeout.<anonymous> (/Users/dhruvkant/Desktop/lifesyncc/node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js:187:23)
+    at listOnTimeout (node:internal/timers:608:17)
+    at process.processTimers (node:internal/timers:543:7)
+Admin auth error: MongooseError: Operation `users.findOne()` buffering timed out after 10000ms
+    at Timeout.<anonymous> (/Users/dhruvkant/Desktop/lifesyncc/node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js:187:23)
+    at listOnTimeout (node:internal/timers:608:17)
+    at process.processTimers (node:internal/timers:543:7)
+Admin auth error: MongooseError: Operation `users.findOne()` buffering timed out after 10000ms
+    at Timeout.<anonymous> (/Users/dhruvkant/Desktop/lifesyncc/node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js:187:23)
+    at listOnTimeout (node:internal/timers:608:17)
+    at process.processTimers (node:internal/timers:543:7)
+Admin auth error: MongooseError: Operation `users.findOne()` buffering timed out after 10000ms
+    at Timeout.<anonymous> (/Users/dhruvkant/Desktop/lifesyncc/node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js:187:23)
+    at listOnTimeout (node:internal/timers:608:17)
+    at process.processTimers (node:internal/timers:543:7)
+Login - User from DB: { email: 'admin@gmail.com', role: 'admin', hasRole: true }
+Route params: [Object: null prototype] { userId: '685982919616ea9860f75fc5' }
+Original query: [Object: null prototype] {}
+Modified query: [Object: null prototype] {}
+Route params: [Object: null prototype] { userId: '685982919616ea9860f75fc5' }
+Original query: [Object: null prototype] {}
+Modified query: [Object: null prototype] {}
