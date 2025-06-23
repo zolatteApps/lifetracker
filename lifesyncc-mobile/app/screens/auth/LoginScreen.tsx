@@ -115,6 +115,21 @@ export const LoginScreen: React.FC = () => {
             )}
           </TouchableOpacity>
 
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.phoneButton}
+            onPress={() => navigation.navigate('PhoneLogin')}
+            disabled={loading}
+          >
+            <Text style={styles.phoneIcon}>📱</Text>
+            <Text style={styles.phoneButtonText}>Sign in with Phone</Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={() => navigation.navigate('Register')}
@@ -228,5 +243,40 @@ const styles = StyleSheet.create({
     color: '#4f46e5',
     fontSize: 14,
     fontWeight: '500',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  phoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 24,
+  },
+  phoneIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  phoneButtonText: {
+    color: '#4f46e5',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

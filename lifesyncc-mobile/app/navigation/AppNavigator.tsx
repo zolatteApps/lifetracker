@@ -6,6 +6,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext-mongodb';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
+import { PhoneLoginScreen } from '../screens/auth/PhoneLoginScreen';
+import { VerifyOTPScreen } from '../screens/auth/VerifyOTPScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { GoalsScreen } from '../screens/main/GoalsScreen';
 import { ScheduleScreen } from '../screens/main/ScheduleScreen';
@@ -20,6 +22,8 @@ const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
+    <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
   </Stack.Navigator>
 );
 
@@ -45,12 +49,22 @@ const MainTabs = () => (
 
         return <Ionicons name={iconName} size={size} color={color} />;
       },
-      tabBarActiveTintColor: '#4F46E5',
-      tabBarInactiveTintColor: 'gray',
+      tabBarActiveTintColor: '#7C3AED',
+      tabBarInactiveTintColor: '#9CA3AF',
       headerShown: false,
+      tabBarStyle: {
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+        elevation: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
     })}
   >
-    <Tab.Screen name="Dashboard" component={DashboardScreen} />
+    <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
     <Tab.Screen name="Goals" component={GoalsScreen} />
     <Tab.Screen name="Schedule" component={ScheduleScreen} />
     <Tab.Screen name="Feedback" component={FeedbackListScreen} />
