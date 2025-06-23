@@ -58,6 +58,8 @@ module.exports = async function handler(req, res) {
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    console.log('Generated OTP:', otp, 'for phone:', phoneNumber);
+
     // Save OTP to database
     await OTPVerification.create({
       phoneNumber,

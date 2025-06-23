@@ -45,13 +45,26 @@ export const PhoneLoginScreen: React.FC = () => {
     // Remove all non-numeric characters
     const cleaned = text.replace(/\D/g, '');
     
-    // Format as US phone number (adjust for other countries)
-    if (cleaned.length <= 3) {
-      return cleaned;
-    } else if (cleaned.length <= 6) {
-      return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
+    // Format based on selected country
+    if (selectedCountry.code === '+91') {
+      // Indian format: XXXXX-XXXXX
+      if (cleaned.length <= 5) {
+        return cleaned;
+      } else {
+        return `${cleaned.slice(0, 5)}-${cleaned.slice(5, 10)}`;
+      }
+    } else if (selectedCountry.code === '+1') {
+      // US/Canada format: XXX-XXX-XXXX
+      if (cleaned.length <= 3) {
+        return cleaned;
+      } else if (cleaned.length <= 6) {
+        return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
+      } else {
+        return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+      }
     } else {
-      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+      // For other countries, just limit to 10-15 digits without formatting
+      return cleaned.slice(0, 15);
     }
   };
 
@@ -64,6 +77,8 @@ export const PhoneLoginScreen: React.FC = () => {
     }
 
     const fullPhoneNumber = `${selectedCountry.code}${cleanedPhone}`;
+
+    console.log('Sending OTP to:', fullPhoneNumber);
 
     try {
       setLoading(true);

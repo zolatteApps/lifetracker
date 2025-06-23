@@ -99,6 +99,8 @@ export const VerifyOTPScreen: React.FC = () => {
       return;
     }
 
+    console.log('Verifying OTP:', code, 'for phone:', phoneNumber);
+
     try {
       setLoading(true);
       await signInWithPhone(phoneNumber, code);
@@ -139,9 +141,35 @@ export const VerifyOTPScreen: React.FC = () => {
   };
 
   const formatPhoneDisplay = (phone: string) => {
-    // Remove country code for display
-    const cleaned = phone.replace(/^\+\d/, '');
-    return cleaned.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+    // Display the full international number with proper formatting
+    if (phone.startsWith('+91')) {
+      // Indian number format: +91 12345-67890
+      const withoutCode = phone.substring(3);
+      if (withoutCode.length === 10) {
+        return `+91 ${withoutCode.substring(0, 5)}-${withoutCode.substring(5)}`;
+      }
+    } else if (phone.startsWith('+1')) {
+      // US/Canada format: +1 (123) 456-7890
+      const withoutCode = phone.substring(2);
+      if (withoutCode.length === 10) {
+        return `+1 (${withoutCode.substring(0, 3)}) ${withoutCode.substring(3, 6)}-${withoutCode.substring(6)}`;
+      }
+    } else if (phone.startsWith('+44')) {
+      // UK format: +44 1234 567890
+      const withoutCode = phone.substring(3);
+      return `+44 ${withoutCode.substring(0, 4)} ${withoutCode.substring(4)}`;
+    }
+    
+    // For other countries or unknown formats, just display as is with spaces
+    if (phone.startsWith('+')) {
+      // Try to format as: +XX XXXXX XXXXX
+      const match = phone.match(/^(\+\d{1,3})(\d{5})(\d+)$/);
+      if (match) {
+        return `${match[1]} ${match[2]} ${match[3]}`;
+      }
+    }
+    
+    return phone; // Return as-is if no formatting rules match
   };
 
   return (
@@ -159,6 +187,9 @@ export const VerifyOTPScreen: React.FC = () => {
             Enter the 6-digit code sent to
           </Text>
           <Text style={styles.phoneNumber}>{formatPhoneDisplay(phoneNumber)}</Text>
+          <Text style={styles.phoneNumberNote}>
+            (Check SMS on this number)
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -248,6 +279,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#1f2937',
     fontWeight: '600',
+  },
+  phoneNumberNote: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
   },
   form: {
     width: '100%',
