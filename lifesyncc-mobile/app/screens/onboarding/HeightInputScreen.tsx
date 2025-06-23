@@ -6,6 +6,7 @@ import { OnboardingStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import apiService from '../../services/api.service';
 import authService from '../../services/auth.service';
+import { API_ENDPOINTS } from '../../config/api';
 
 type HeightInputScreenNavigationProp = StackNavigationProp<OnboardingStackParamList, 'HeightInput'>;
 type HeightInputScreenRouteProp = RouteProp<OnboardingStackParamList, 'HeightInput'>;
@@ -62,7 +63,7 @@ export default function HeightInputScreen({ navigation, route }: Props) {
       };
 
       // Update user profile via API
-      const response = await apiService.post('/auth/update-profile', onboardingData);
+      const response = await apiService.post(API_ENDPOINTS.auth.updateProfile, onboardingData);
       
       // Refresh user data in auth context
       await refreshUser();
