@@ -37,6 +37,9 @@ module.exports = async function handler(req, res) {
       verified: false
     });
 
+    console.log('Verifying OTP:', otp, 'for phone:', phoneNumber);
+    console.log('Found OTP record:', otpRecord ? { otp: otpRecord.otp, attempts: otpRecord.attempts } : 'None');
+
     if (!otpRecord) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
