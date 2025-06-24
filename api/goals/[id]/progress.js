@@ -46,7 +46,17 @@ const handler = async (req, res) => {
     }
 
     // Save will automatically recalculate progress for numeric/habit goals
-    await goal.save();
+    try {
+      await goal.save();
+    } catch (saveError) {
+      console.error('Goal save error:', saveError);
+      console.error('Goal data:', JSON.stringify(goal, null, 2));
+      return res.status(500).json({ 
+        error: 'Failed to save goal', 
+        details: saveError.message,
+        validationErrors: saveError.errors 
+      });
+    }
 
     return res.status(200).json({ 
       message: 'Progress updated successfully',
@@ -54,7 +64,13 @@ const handler = async (req, res) => {
     });
   } catch (error) {
     console.error('Progress update error:', error);
-    return res.status(500).json({ error: 'Server error', details: error.message });
+    console.error('Request body:', req.body);
+    console.error('Goal ID:', id);
+    return res.status(500).json({ 
+      error: 'Server error', 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    });
   }
 };
 
