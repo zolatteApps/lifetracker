@@ -35,6 +35,19 @@ export const GoalDetailsScreen: React.FC = () => {
     fetchGoalAnalytics();
   }, []);
 
+  // Refetch goal data to ensure we have the latest
+  const refetchGoal = async () => {
+    try {
+      const goals = await goalService.getGoals();
+      const updatedGoal = goals.find(g => (g._id || g.id) === (goal._id || goal.id));
+      if (updatedGoal) {
+        setGoal(updatedGoal);
+      }
+    } catch (error) {
+      console.error('Error refetching goal:', error);
+    }
+  };
+
   const fetchGoalAnalytics = async () => {
     try {
       const response = await fetch(`${API_URL}/api/goals/${goal._id || goal.id}/analytics`, {
@@ -60,13 +73,21 @@ export const GoalDetailsScreen: React.FC = () => {
         ? { progress: newValue }
         : { currentValue: newValue };
 
-      const updatedGoal = await goalService.updateProgress(goal._id || goal.id, progressData);
-      setGoal(updatedGoal);
+      console.log('Updating goal progress:', progressData);
+      const response = await goalService.updateProgress(goal._id || goal.id, progressData);
+      console.log('Updated goal received:', response);
+      
+      // Close the modal first
+      setProgressModalVisible(false);
+      
+      // Show success message
+      Alert.alert('Success', 'Progress updated successfully!');
+      
+      // Refetch the goal data to ensure we have the latest
+      await refetchGoal();
       
       // Refresh analytics
       await fetchGoalAnalytics();
-      
-      Alert.alert('Success', 'Progress updated successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to update progress');
       console.error('Error updating progress:', error);
