@@ -65,6 +65,7 @@ const goalSchema = new mongoose.Schema({
     value: {
       type: Number,
       required: true,
+      default: 0,
     },
     date: {
       type: Date,
@@ -139,7 +140,7 @@ goalSchema.pre('save', function(next) {
     
     // Add to progress history
     this.progressHistory.push({
-      value: this.progress,
+      value: this.progress || 0,
       date: new Date(),
     });
     
