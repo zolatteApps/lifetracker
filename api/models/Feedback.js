@@ -21,6 +21,10 @@ const feedbackSchema = new mongoose.Schema({
     enum: ['pending', 'reviewed', 'resolved'],
     default: 'pending'
   },
+  adminNotes: {
+    type: String,
+    maxLength: 500
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -49,3 +49,55 @@ export interface CheckIn {
   notes: string;
   completedTasks: string[];
 }
+
+export interface User {
+  id?: string;
+  _id: string;
+  email: string;
+  phoneNumber?: string;
+  isPhoneVerified: boolean;
+  name?: string;
+  age?: number;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  height?: {
+    value: number;
+    unit: 'cm' | 'ft';
+  };
+  isOnboardingCompleted: boolean;
+  profileCompletedAt?: Date;
+  role: 'user' | 'admin';
+  createdAt: Date;
+}
+
+export interface Feedback {
+  _id: string;
+  userId: User | string;
+  category: 'bug' | 'feature' | 'general';
+  message: string;
+  status: 'pending' | 'reviewed' | 'resolved';
+  adminNotes?: string;
+  createdAt: Date;
+}
+
+export interface AdminStats {
+  users: {
+    totalUsers: number;
+    verifiedUsers: number;
+    completedOnboarding: number;
+    adminUsers: number;
+  };
+  goals: {
+    totalGoals: number;
+    completedGoals: number;
+    physicalGoals: number;
+    mentalGoals: number;
+    financialGoals: number;
+    socialGoals: number;
+  };
+  feedback: {
+    totalFeedback: number;
+    pendingFeedback: number;
+    reviewedFeedback: number;
+    resolvedFeedback: number;
+  };
+}

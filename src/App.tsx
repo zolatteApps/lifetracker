@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard/Dashboard';
 import Auth from './components/Auth';
-import { UserProfile } from './types';
+import AdminLayout from './components/Admin/AdminLayout';
+import AdminDashboard from './components/Admin/AdminDashboard/AdminDashboard';
+import UserManagement from './components/Admin/UserManagement/UserList';
+import UserDetails from './components/Admin/UserManagement/UserDetails';
+import FeedbackManagement from './components/Admin/FeedbackManagement/FeedbackList';
+import Analytics from './components/Admin/Analytics/Analytics';
+import { UserProfile, User } from './types';
 
 const defaultUserProfile: UserProfile = {
   goals: "Build healthy habits, improve productivity, develop meaningful relationships, and achieve financial stability",
@@ -19,6 +25,10 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('token') !== null;
   });
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
   useEffect(() => {
     console.log('UserProfile updated:', userProfile);
@@ -27,8 +37,14 @@ function App() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
     setIsAuthenticated(token !== null);
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
   }, []);
+
+  const isAdmin = user?.role === 'admin';
 
   return (
     <Router>
@@ -46,6 +62,18 @@ function App() {
             path="/dashboard" 
             element={isAuthenticated ? <Dashboard userProfile={userProfile} /> : <Navigate to="/auth" />} 
           />
+          
+          {/* Admin Routes */}
+          <Route 
+            path="/admin" 
+            element={isAuthenticated ? <AdminLayout isAdmin={isAdmin} /> : <Navigate to="/auth" />}
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="users/:userId" element={<UserDetails />} />
+            <Route path="feedback" element={<FeedbackManagement />} />
+            <Route path="analytics" element={<Analytics />} />
+          </Route>
         </Routes>
       </div>
     </Router>

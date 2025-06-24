@@ -60,6 +60,7 @@ module.exports = async function handler(req, res) {
         height: user.height,
         isOnboardingCompleted: user.isOnboardingCompleted,
         profileCompletedAt: user.profileCompletedAt,
+        role: user.role,
         createdAt: user.createdAt,
       },
     });
