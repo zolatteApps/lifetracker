@@ -22,6 +22,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // Connect to database first
+    await connectDB();
+
     // Admin authentication
     const token = req.headers.authorization?.replace('Bearer ', '');
     
@@ -39,8 +42,6 @@ module.exports = async function handler(req, res) {
     if (user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
     }
-
-    await connectDB();
 
     // Parse query parameters
     const page = parseInt(req.query.page) || 1;
@@ -88,6 +89,18 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Admin users error:', error);
-    res.status(500).json({ error: 'Server error' });
+    
+    // More specific error responses
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }

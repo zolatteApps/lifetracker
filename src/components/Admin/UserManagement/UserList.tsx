@@ -36,7 +36,10 @@ const UserList: React.FC = () => {
         ...(roleFilter && { role: roleFilter })
       });
 
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      // In production (Vercel), use relative URL. In dev, use localhost
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000' 
+        : '';
       const response = await fetch(
         `${apiUrl}/api/admin/users?${params}`,
         {
