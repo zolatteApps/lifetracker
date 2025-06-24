@@ -4,7 +4,7 @@
 LifeSync is a comprehensive life management application that helps you track and achieve your goals across four key areas:
 - 🏃 Physical Health
 - 🧠 Mental Wellbeing
-- 💰 Financial Goals
+- 💰 Financial Goals.
 - 👥 Social Connections.
 
 ## Features of healthsync
