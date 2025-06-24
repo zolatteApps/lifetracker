@@ -42,6 +42,8 @@ module.exports = async function handler(req, res) {
       password: hashedPassword,
       name: name || undefined, // Optional name field
       isOnboardingCompleted: false,
+      // Automatically assign admin role to admin@gmail.com
+      role: email === 'admin@gmail.com' ? 'admin' : 'user',
     });
 
     await user.save();
@@ -61,6 +63,7 @@ module.exports = async function handler(req, res) {
         email: user.email,
         name: user.name,
         isOnboardingCompleted: user.isOnboardingCompleted,
+        role: user.role,
         createdAt: user.createdAt,
       },
     });
