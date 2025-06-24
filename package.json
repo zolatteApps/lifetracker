@@ -34,7 +34,8 @@
     "dev": "concurrently \"npm run server\" \"npm start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "migrate:goals": "node api/migrations/add-analytics-to-goals.js"
   },
   "eslintConfig": {
     "extends": [

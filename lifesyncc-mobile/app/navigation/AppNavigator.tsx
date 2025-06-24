@@ -9,7 +9,8 @@ import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { PhoneLoginScreen } from '../screens/auth/PhoneLoginScreen';
 import { VerifyOTPScreen } from '../screens/auth/VerifyOTPScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
-import { GoalsScreen } from '../screens/main/GoalsScreen';
+import { GoalsScreenEnhanced as GoalsScreen } from '../screens/main/GoalsScreenEnhanced';
+import { GoalDetailsScreen } from '../screens/main/GoalDetailsScreen';
 import { ScheduleScreenEnhanced as ScheduleScreen } from '../screens/main/ScheduleScreenEnhanced';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { FeedbackListScreen } from '../screens/main/FeedbackListScreen';
@@ -27,6 +28,13 @@ const AuthStack = () => (
     <Stack.Screen name="Register" component={RegisterScreen} />
     <Stack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
     <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
+  </Stack.Navigator>
+);
+
+const GoalsStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="GoalsList" component={GoalsScreen} />
+    <Stack.Screen name="GoalDetails" component={GoalDetailsScreen} />
   </Stack.Navigator>
 );
 
@@ -68,7 +76,7 @@ const MainTabs = () => (
     })}
   >
     <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
-    <Tab.Screen name="Goals" component={GoalsScreen} />
+    <Tab.Screen name="Goals" component={GoalsStack} />
     <Tab.Screen name="Schedule" component={ScheduleScreen} />
     <Tab.Screen name="Feedback" component={FeedbackListScreen} />
     <Tab.Screen name="Profile" component={ProfileScreen} />
