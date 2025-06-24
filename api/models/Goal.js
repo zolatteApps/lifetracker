@@ -124,6 +124,19 @@ goalSchema.pre('save', function(next) {
   
   // Track progress history
   if (this.isModified('progress') || this.isModified('currentValue')) {
+    // Initialize arrays if they don't exist
+    if (!this.progressHistory) {
+      this.progressHistory = [];
+    }
+    if (!this.analytics) {
+      this.analytics = {
+        averageProgressPerDay: 0,
+        projectedCompletionDate: null,
+        lastProgressUpdate: new Date(),
+        totalUpdates: 0,
+      };
+    }
+    
     // Add to progress history
     this.progressHistory.push({
       value: this.progress,
@@ -141,6 +154,15 @@ goalSchema.pre('save', function(next) {
     
     // Update streak for habit goals
     if (this.type === 'habit') {
+      // Initialize streak if it doesn't exist
+      if (!this.streak) {
+        this.streak = {
+          current: 0,
+          best: 0,
+          lastUpdated: null
+        };
+      }
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
