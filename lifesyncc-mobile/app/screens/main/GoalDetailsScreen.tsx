@@ -295,7 +295,7 @@ export const GoalDetailsScreen: React.FC = () => {
         visible={progressModalVisible}
         onClose={() => setProgressModalVisible(false)}
         goal={goal}
-        category={category}
+        categoryColor={category.color}
         onUpdate={updateGoalProgress}
       />
     </ScrollView>
