@@ -33,6 +33,12 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Ensure admin@gmail.com always has admin role
+    if (email === 'admin@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {

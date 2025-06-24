@@ -21,7 +21,7 @@ const updateProfileRoute = require('./api/auth/update-profile');
 
 // Admin routes
 const adminStatsRoute = require('./api/admin/stats');
-const adminUsersRoute = require('./api/admin/users/index');
+const adminUsersRoute = require('./api/admin/users');
 const adminUserDetailRoute = require('./api/admin/users/[userId]');
 const adminFeedbackRoute = require('./api/admin/feedback/index');
 const adminFeedbackDetailRoute = require('./api/admin/feedback/[id]');
