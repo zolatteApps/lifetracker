@@ -34,62 +34,79 @@ const handler = async (req, res) => {
 
     const { currentValue, progress } = req.body;
 
-    // Prepare update data
-    const updateData = {};
-    
+    // Update progress directly on the document
     if (goal.type === 'numeric' || goal.type === 'habit') {
       if (currentValue !== undefined) {
-        updateData.currentValue = currentValue;
+        goal.currentValue = currentValue;
         // Calculate progress
         if (goal.targetValue && goal.targetValue > 0) {
-          updateData.progress = Math.min(Math.round((currentValue / goal.targetValue) * 100), 100);
+          goal.progress = Math.min(Math.round((currentValue / goal.targetValue) * 100), 100);
         }
       }
     } else if (goal.type === 'milestone') {
       if (progress !== undefined) {
-        updateData.progress = Math.min(Math.max(progress, 0), 100);
+        goal.progress = Math.min(Math.max(progress, 0), 100);
       }
     }
 
+    // Initialize fields if they don't exist
+    if (!goal.progressHistory) goal.progressHistory = [];
+    if (!goal.analytics) goal.analytics = {};
+
     // Add to progress history
-    const progressEntry = {
-      value: updateData.progress || goal.progress || 0,
+    goal.progressHistory.push({
+      value: goal.progress || 0,
       date: new Date(),
-    };
+    });
 
-    // Update goal using findByIdAndUpdate to avoid pre-save hook issues
+    // Keep only last 90 entries
+    if (goal.progressHistory.length > 90) {
+      goal.progressHistory = goal.progressHistory.slice(-90);
+    }
+
+    // Update analytics
+    goal.analytics.lastProgressUpdate = new Date();
+    goal.analytics.totalUpdates = (goal.analytics.totalUpdates || 0) + 1;
+
+    // Mark as completed if progress reaches 100
+    if (goal.progress >= 100 && !goal.completed) {
+      goal.completed = true;
+      goal.completedAt = new Date();
+    }
+
+    // Use markModified to ensure Mongoose knows about the changes
+    goal.markModified('progressHistory');
+    goal.markModified('analytics');
+
+    // Try to save with error handling
     try {
-      const updatedGoal = await Goal.findByIdAndUpdate(
-        id,
-        {
-          $set: {
-            ...updateData,
-            'analytics.lastProgressUpdate': new Date(),
-          },
-          $push: { 
-            progressHistory: {
-              $each: [progressEntry],
-              $slice: -90  // Keep only last 90 entries
+      await goal.save({ validateBeforeSave: false });
+    } catch (saveError) {
+      console.error('Save error:', saveError);
+      // If save fails, try direct update
+      try {
+        await Goal.updateOne(
+          { _id: id },
+          {
+            $set: {
+              currentValue: goal.currentValue,
+              progress: goal.progress,
+              completed: goal.completed,
+              completedAt: goal.completedAt,
+              progressHistory: goal.progressHistory,
+              analytics: goal.analytics
             }
-          },
-          $inc: { 'analytics.totalUpdates': 1 },
-        },
-        { new: true, runValidators: true }
-      );
-
-      if (!updatedGoal) {
-        return res.status(404).json({ error: 'Goal not found after update' });
+          }
+        );
+        // Fetch updated goal
+        goal = await Goal.findById(id);
+      } catch (updateError) {
+        console.error('Update error:', updateError);
+        return res.status(500).json({ 
+          error: 'Failed to update goal', 
+          details: updateError.message 
+        });
       }
-
-      goal = updatedGoal;
-    } catch (updateError) {
-      console.error('Goal update error:', updateError);
-      console.error('Update data:', updateData);
-      return res.status(500).json({ 
-        error: 'Failed to update goal', 
-        details: updateError.message,
-        validationErrors: updateError.errors 
-      });
     }
 
     return res.status(200).json({ 
