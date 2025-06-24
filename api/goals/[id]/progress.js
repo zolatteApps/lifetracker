@@ -34,27 +34,61 @@ const handler = async (req, res) => {
 
     const { currentValue, progress } = req.body;
 
-    // Update progress based on goal type
+    // Prepare update data
+    const updateData = {};
+    
     if (goal.type === 'numeric' || goal.type === 'habit') {
       if (currentValue !== undefined) {
-        goal.currentValue = currentValue;
+        updateData.currentValue = currentValue;
+        // Calculate progress
+        if (goal.targetValue && goal.targetValue > 0) {
+          updateData.progress = Math.min(Math.round((currentValue / goal.targetValue) * 100), 100);
+        }
       }
     } else if (goal.type === 'milestone') {
       if (progress !== undefined) {
-        goal.progress = Math.min(Math.max(progress, 0), 100);
+        updateData.progress = Math.min(Math.max(progress, 0), 100);
       }
     }
 
-    // Save will automatically recalculate progress for numeric/habit goals
+    // Add to progress history
+    const progressEntry = {
+      value: updateData.progress || goal.progress || 0,
+      date: new Date(),
+    };
+
+    // Update goal using findByIdAndUpdate to avoid pre-save hook issues
     try {
-      await goal.save();
-    } catch (saveError) {
-      console.error('Goal save error:', saveError);
-      console.error('Goal data:', JSON.stringify(goal, null, 2));
+      const updatedGoal = await Goal.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            ...updateData,
+            'analytics.lastProgressUpdate': new Date(),
+          },
+          $push: { 
+            progressHistory: {
+              $each: [progressEntry],
+              $slice: -90  // Keep only last 90 entries
+            }
+          },
+          $inc: { 'analytics.totalUpdates': 1 },
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedGoal) {
+        return res.status(404).json({ error: 'Goal not found after update' });
+      }
+
+      goal = updatedGoal;
+    } catch (updateError) {
+      console.error('Goal update error:', updateError);
+      console.error('Update data:', updateData);
       return res.status(500).json({ 
-        error: 'Failed to save goal', 
-        details: saveError.message,
-        validationErrors: saveError.errors 
+        error: 'Failed to update goal', 
+        details: updateError.message,
+        validationErrors: updateError.errors 
       });
     }
 
