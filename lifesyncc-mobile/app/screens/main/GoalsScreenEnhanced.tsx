@@ -55,26 +55,35 @@ export const GoalsScreenEnhanced: React.FC = () => {
 
   const fetchGoals = async () => {
     try {
+      console.log('Fetching goals...');
       const fetchedGoals = await goalService.getGoals();
+      console.log('Fetched goals:', fetchedGoals);
       setGoals(fetchedGoals);
       await goalService.saveGoalsOffline(fetchedGoals);
       
-      // Fetch summary analytics
-      const response = await fetch(`${API_URL}/api/goals/analytics/summary`, {
-        headers: {
-          'Authorization': `Bearer ${user?.token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const analytics = await response.json();
-        setSummaryAnalytics(analytics);
+      // Fetch summary analytics - but don't fail if it errors
+      try {
+        const response = await fetch(`${API_URL}/api/goals/analytics/summary`, {
+          headers: {
+            'Authorization': `Bearer ${user?.token}`,
+          },
+        });
+        
+        if (response.ok) {
+          const analytics = await response.json();
+          setSummaryAnalytics(analytics);
+        }
+      } catch (analyticsError) {
+        console.log('Analytics fetch failed, but continuing:', analyticsError);
       }
     } catch (error) {
       console.error('Error fetching goals:', error);
       const offlineGoals = await goalService.getOfflineGoals();
-      if (offlineGoals.length > 0) {
+      if (offlineGoals && offlineGoals.length > 0) {
         setGoals(offlineGoals);
+        Alert.alert('Offline Mode', 'Showing cached goals. Some features may be limited.');
+      } else {
+        Alert.alert('Error', 'Failed to load goals. Please check your connection and try again.');
       }
     } finally {
       setLoading(false);
@@ -123,6 +132,68 @@ export const GoalsScreenEnhanced: React.FC = () => {
     setSelectedCategory(category);
     await fetchGoalAnalytics(goal._id || goal.id || '');
     navigation.navigate('GoalDetails' as never, { goal, category, analytics: selectedGoalAnalytics } as never);
+  };
+
+  const openGoalModal = (category: typeof categories[0]) => {
+    setSelectedCategory(category);
+    setModalPrefillData(null);
+    setModalVisible(true);
+  };
+
+  const handleCreateGoal = async (goal: any) => {
+    try {
+      const newGoal = await goalService.createGoal(goal);
+      setGoals(prev => [...prev, newGoal]);
+      Alert.alert('Success!', 'Goal created successfully!');
+      await fetchGoals();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create goal. Please try again.');
+      console.error('Error creating goal:', error);
+    }
+  };
+
+  const updateGoalProgress = async (goalId: string, newValue: number) => {
+    try {
+      const goal = goals.find(g => (g._id || g.id) === goalId);
+      if (!goal) return;
+
+      const progressData = goal.type === 'milestone' 
+        ? { progress: newValue }
+        : { currentValue: newValue };
+
+      const updatedGoal = await goalService.updateProgress(goalId, progressData);
+      setGoals(prev => prev.map(g => 
+        (g._id || g.id) === goalId ? updatedGoal : g
+      ));
+      Alert.alert('Success', 'Progress updated!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update progress');
+      console.error('Error updating progress:', error);
+    }
+  };
+
+  const deleteGoal = async (goalId: string) => {
+    Alert.alert(
+      'Delete Goal',
+      'Are you sure you want to delete this goal?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await goalService.deleteGoal(goalId);
+              setGoals(prev => prev.filter(g => (g._id || g.id) !== goalId));
+              Alert.alert('Success', 'Goal deleted successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete goal');
+              console.error('Error deleting goal:', error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderAnalyticsSummary = () => {
@@ -324,7 +395,127 @@ export const GoalsScreenEnhanced: React.FC = () => {
         })}
       </View>
 
-      {/* Rest of the component remains the same... */}
+      {categories
+        .filter(category => !filterCategory || category.key === filterCategory)
+        .map((category) => {
+        const categoryGoals = getCategoryGoals(category.key);
+        
+        return (
+          <View key={category.key} style={styles.categorySection}>
+            <View style={styles.categoryHeader}>
+              <View style={styles.categoryTitleRow}>
+                <View style={[styles.categoryIcon, { backgroundColor: category.color + '20' }]}>
+                  <Ionicons name={category.icon as any} size={24} color={category.color} />
+                </View>
+                <Text style={[styles.categoryTitle, { color: theme.text }]}>
+                  {category.label}
+                </Text>
+                <Text style={[styles.goalCount, { color: theme.textSecondary }]}>
+                  ({categoryGoals.length})
+                </Text>
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: category.color }]}
+                onPress={() => openGoalModal(category)}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {categoryGoals.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  No goals yet
+                </Text>
+                <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+                  Tap + to add your first {category.label.toLowerCase()} goal
+                </Text>
+              </View>
+            ) : (
+              categoryGoals.map((goal) => (
+                <TouchableOpacity
+                  key={goal._id || goal.id}
+                  style={[styles.goalCard, { backgroundColor: theme.surface }]}
+                  onPress={() => openGoalDetails(goal, category)}
+                  onLongPress={() => deleteGoal(goal._id || goal.id || '')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.goalHeader}>
+                    <Text style={[styles.goalTitle, { color: theme.text }]}>
+                      {goal.title}
+                    </Text>
+                    <Text style={[
+                      styles.goalProgress,
+                      { color: goal.completed ? theme.success : category.color }
+                    ]}>
+                      {goal.progress}%
+                    </Text>
+                  </View>
+                  
+                  <Text style={[styles.goalDescription, { color: theme.textSecondary }]}>
+                    {goal.description}
+                  </Text>
+                  
+                  <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${goal.progress}%`,
+                          backgroundColor: goal.completed ? theme.success : category.color,
+                        },
+                      ]}
+                    />
+                  </View>
+
+                  {goal.type === 'numeric' && (
+                    <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+                      {goal.currentValue} / {goal.targetValue} {goal.unit}
+                    </Text>
+                  )}
+
+                  {goal.completed && (
+                    <View style={styles.completedBadge}>
+                      <Ionicons name="checkmark-circle" size={20} color={theme.success} />
+                      <Text style={[styles.completedText, { color: theme.success }]}>
+                        Completed
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        );
+      })}
+
+      {selectedCategory && (
+        <>
+          <GoalCreationModal
+            visible={modalVisible}
+            category={selectedCategory.key}
+            categoryColor={selectedCategory.color}
+            onClose={() => {
+              setModalVisible(false);
+              setSelectedCategory(null);
+              setModalPrefillData(null);
+            }}
+            onSave={handleCreateGoal}
+            prefillData={modalPrefillData}
+          />
+          <GoalProgressModal
+            visible={progressModalVisible}
+            goal={selectedGoal}
+            category={selectedCategory}
+            onClose={() => {
+              setProgressModalVisible(false);
+              setSelectedGoal(null);
+            }}
+            onUpdate={updateGoalProgress}
+          />
+        </>
+      )}
     </ScrollView>
   );
 };
@@ -490,5 +681,109 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+  },
+  categorySection: {
+    marginBottom: 24,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  categoryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  goalCount: {
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  goalCard: {
+    margin: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  goalProgress: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  goalDescription: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  completedText: {
+    fontSize: 13,
+    marginLeft: 4,
+    fontWeight: '500',
   },
 });
