@@ -10,7 +10,7 @@ import { PhoneLoginScreen } from '../screens/auth/PhoneLoginScreen';
 import { VerifyOTPScreen } from '../screens/auth/VerifyOTPScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { GoalsScreen } from '../screens/main/GoalsScreen';
-import { ScheduleScreen } from '../screens/main/ScheduleScreen';
+import { ScheduleScreenEnhanced as ScheduleScreen } from '../screens/main/ScheduleScreenEnhanced';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { FeedbackListScreen } from '../screens/main/FeedbackListScreen';
 import { Ionicons } from '@expo/vector-icons';
