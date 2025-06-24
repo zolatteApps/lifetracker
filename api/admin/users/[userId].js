@@ -1,7 +1,7 @@
 const connectDB = require('../../lib/mongodb.js');
 const User = require('../../models/User.js');
 const Goal = require('../../models/Goal.js');
-const adminAuth = require('../../middleware/adminAuth.js');
+const jwt = require('jsonwebtoken');
 
 module.exports = async function handler(req, res) {
   // Set CORS headers
@@ -18,23 +18,29 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // Apply admin authentication
-  await new Promise((resolve, reject) => {
-    adminAuth(req, res, (error) => {
-      if (error) reject(error);
-      else resolve();
-    });
-  }).catch(() => {
-    // Response already sent by adminAuth
-    return;
-  });
-
-  if (!req.user) return;
-
   const { userId } = req.query;
 
   try {
+    // Connect to database first
     await connectDB();
+
+    // Admin authentication
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. No token provided.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const authUser = await User.findById(decoded.userId).select('-password');
+
+    if (!authUser) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (authUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
 
     if (req.method === 'GET') {
       // Get user details
@@ -83,7 +89,7 @@ module.exports = async function handler(req, res) {
       res.status(200).json({ user });
     } else if (req.method === 'DELETE') {
       // Prevent self-deletion
-      if (userId === req.user._id.toString()) {
+      if (userId === authUser._id.toString()) {
         return res.status(400).json({ error: 'Cannot delete your own account' });
       }
 
@@ -106,6 +112,18 @@ module.exports = async function handler(req, res) {
     }
   } catch (error) {
     console.error('Admin user management error:', error);
-    res.status(500).json({ error: 'Server error' });
+    
+    // More specific error responses
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };

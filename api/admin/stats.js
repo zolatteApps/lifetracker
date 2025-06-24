@@ -2,7 +2,7 @@ const connectDB = require('../lib/mongodb.js');
 const User = require('../models/User.js');
 const Goal = require('../models/Goal.js');
 const Feedback = require('../models/Feedback.js');
-const adminAuth = require('../middleware/adminAuth.js');
+const jwt = require('jsonwebtoken');
 
 module.exports = async function handler(req, res) {
   // Set CORS headers
@@ -23,21 +23,27 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Apply admin authentication
-  await new Promise((resolve, reject) => {
-    adminAuth(req, res, (error) => {
-      if (error) reject(error);
-      else resolve();
-    });
-  }).catch(() => {
-    // Response already sent by adminAuth
-    return;
-  });
-
-  if (!req.user) return;
-
   try {
+    // Connect to database first
     await connectDB();
+
+    // Admin authentication
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. No token provided.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const user = await User.findById(decoded.userId).select('-password');
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
 
     // Get statistics
     const [userStats, goalStats, feedbackStats] = await Promise.all([
@@ -147,6 +153,18 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Admin stats error:', error);
-    res.status(500).json({ error: 'Server error' });
+    
+    // More specific error responses
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
