@@ -165,24 +165,25 @@ export const GoalProgressModal: React.FC<GoalProgressModalProps> = ({
             </Text>
           </View>
 
-          <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onClose}
-              disabled={updating}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.updateButton, { backgroundColor: categoryColor }]}
-              onPress={handleUpdate}
-              disabled={updating}
-            >
-              <Text style={styles.updateButtonText}>
-                {updating ? 'Updating...' : 'Update Progress'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+        </View>
+        
+        <View style={styles.modalFooter}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={onClose}
+            disabled={updating}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.updateButton, { backgroundColor: categoryColor || '#7C3AED' }]}
+            onPress={handleUpdate}
+            disabled={updating}
+          >
+            <Text style={styles.updateButtonText}>
+              {updating ? 'Updating...' : 'Update Progress'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -300,6 +301,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     gap: 12,
+    backgroundColor: '#fff',
   },
   cancelButton: {
     flex: 1,
