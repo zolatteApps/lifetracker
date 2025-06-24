@@ -23,7 +23,10 @@ const AdminDashboard: React.FC = () => {
   const fetchAdminStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      // In production (Vercel), use relative URL. In dev, use localhost
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000' 
+        : '';
       const response = await fetch(`${apiUrl}/api/admin/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
