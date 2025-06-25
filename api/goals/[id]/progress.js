@@ -67,6 +67,12 @@ const handler = async (req, res) => {
       updateData.completedAt = new Date();
     }
 
+    // Add analytics update to updateData
+    if (!updateData.analytics) {
+      updateData.analytics = {};
+    }
+    updateData['analytics.lastProgressUpdate'] = new Date();
+
     // Use findByIdAndUpdate with proper operators for atomic update
     const updatedGoal = await Goal.findByIdAndUpdate(
       id,
@@ -78,8 +84,7 @@ const handler = async (req, res) => {
             $slice: -90  // Keep only last 90 entries
           }
         },
-        $inc: { 'analytics.totalUpdates': 1 },
-        $currentDate: { 'analytics.lastProgressUpdate': true }
+        $inc: { 'analytics.totalUpdates': 1 }
       },
       { 
         new: true,  // Return the updated document
