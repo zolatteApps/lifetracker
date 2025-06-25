@@ -67,8 +67,9 @@ export const GoalDetailsScreen: React.FC = () => {
     }
   };
 
-  const updateGoalProgress = async (newValue: number) => {
+  const updateGoalProgress = async (goalId: string, newValue: number) => {
     try {
+      // Note: goalId parameter is passed but we use the goal from state since we're in the details view
       const progressData = goal.type === 'milestone' 
         ? { progress: newValue }
         : { currentValue: newValue };
