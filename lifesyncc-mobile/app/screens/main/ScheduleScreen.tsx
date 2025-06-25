@@ -380,19 +380,14 @@ export const ScheduleScreen: React.FC = () => {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View style={styles.modalContainer}>
-          <KeyboardAvoidingView 
-            style={styles.modalInner}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
+          <View style={styles.modalInner}>
+            <Text style={styles.modalTitle}>Add New Task</Text>
+            
             <ScrollView 
-              style={styles.modalScrollView}
-              contentContainerStyle={styles.modalScrollContent}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 20 }}
               showsVerticalScrollIndicator={true}
-              keyboardShouldPersistTaps="handled"
-              bounces={true}
             >
-              <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add New Task</Text>
             
             <TextInput
               style={styles.input}
@@ -609,9 +604,8 @@ export const ScheduleScreen: React.FC = () => {
                 <Text style={styles.saveButtonText}>Add Task</Text>
               </TouchableOpacity>
             </View>
-            </View>
-          </ScrollView>
-          </KeyboardAvoidingView>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -806,15 +800,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '95%',
-  },
-  modalScrollView: {
-    flex: 1,
-  },
-  modalScrollContent: {
-    paddingBottom: 40,
-  },
-  modalContent: {
+    maxHeight: '85%',
     padding: 20,
   },
   modalTitle: {
@@ -822,6 +808,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 12,
+    textAlign: 'center',
   },
   input: {
     borderWidth: 1,
