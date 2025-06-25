@@ -408,7 +408,7 @@ export const ScheduleScreen: React.FC = () => {
               console.log('Modal inner height:', height);
             }}
           >
-            <Text style={styles.modalTitle}>Add New Task (DEBUG)</Text>
+            <Text style={[styles.modalTitle, { backgroundColor: 'red', color: 'white' }]}>!!! DEBUG VERSION !!!</Text>
             
             {/* Test different approaches */}
             <View style={{ height: 400, backgroundColor: '#f0f0f0' }}>
@@ -425,9 +425,15 @@ export const ScheduleScreen: React.FC = () => {
                 }}
               >
             
+            <View style={{ backgroundColor: 'red', padding: 20, marginBottom: 10 }}>
+              <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
+                IF YOU SEE THIS RED BOX, CHANGES ARE WORKING!
+              </Text>
+            </View>
+            
             <TextInput
               style={styles.input}
-              placeholder="Task title"
+              placeholder="Task title (DEBUG MODE)"
               value={newTask.title}
               onChangeText={(text) => setNewTask({ ...newTask, title: text })}
             />
