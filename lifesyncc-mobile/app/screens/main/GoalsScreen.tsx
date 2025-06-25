@@ -218,21 +218,12 @@ export const GoalsScreen: React.FC = () => {
 
   const updateGoalProgress = async (goalId: string, newValue: number) => {
     try {
-      console.log('updateGoalProgress called with:', { goalId, newValue, type: typeof newValue });
-      
       const goal = goals.find(g => (g._id || g.id) === goalId);
-      if (!goal) {
-        console.error('Goal not found for ID:', goalId);
-        return;
-      }
-
-      console.log('Found goal:', { id: goal._id || goal.id, type: goal.type, title: goal.title });
+      if (!goal) return;
 
       const progressData = goal.type === 'milestone' 
         ? { progress: newValue }
         : { currentValue: newValue };
-
-      console.log('Sending progressData:', progressData);
 
       const updatedGoal = await goalService.updateProgress(goalId, progressData);
       setGoals(prev => prev.map(g => 
@@ -490,10 +481,7 @@ export const GoalsScreen: React.FC = () => {
               setProgressModalVisible(false);
               setSelectedGoal(null);
             }}
-            onUpdate={(goalId, newValue) => {
-              console.log('GoalProgressModal onUpdate called with:', { goalId, newValue });
-              updateGoalProgress(goalId, newValue);
-            }}
+            onUpdate={updateGoalProgress}
           />
         </>
       )}

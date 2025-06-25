@@ -59,9 +59,33 @@ export const GoalDetailsScreen: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setAnalytics(data);
+      } else {
+        console.log('Analytics endpoint not available or returned error:', response.status);
+        // Set mock analytics data for now to show the UI
+        setAnalytics({
+          analytics: {
+            averageProgressPerDay: goal.progress > 0 ? (goal.progress / 30).toFixed(2) : 0,
+            projectedCompletionDate: null,
+            totalUpdates: 0
+          },
+          progressHistory: [],
+          weeklyProgress: [],
+          streak: { current: 0, best: 0 }
+        });
       }
     } catch (error) {
       console.error('Error fetching goal analytics:', error);
+      // Set mock analytics data for now to show the UI
+      setAnalytics({
+        analytics: {
+          averageProgressPerDay: goal.progress > 0 ? (goal.progress / 30).toFixed(2) : 0,
+          projectedCompletionDate: null,
+          totalUpdates: 0
+        },
+        progressHistory: [],
+        weeklyProgress: [],
+        streak: { current: 0, best: 0 }
+      });
     } finally {
       setLoading(false);
     }
@@ -69,20 +93,14 @@ export const GoalDetailsScreen: React.FC = () => {
 
   const updateGoalProgress = async (goalId: string, newValue: number) => {
     try {
-      // Note: goalId parameter is passed but we use the goal from state since we're in the details view
       const progressData = goal.type === 'milestone' 
         ? { progress: newValue }
         : { currentValue: newValue };
 
-      console.log('Updating goal progress:', progressData);
-      console.log('Current goal state before update:', goal);
       const updatedGoal = await goalService.updateProgress(goal._id || goal.id, progressData);
-      console.log('Updated goal received from API:', updatedGoal);
-      console.log('Updated goal progress value:', updatedGoal.progress);
       
       // Update the local goal state with the response from the API
       setGoal(updatedGoal);
-      console.log('Goal state updated in component');
       
       // Close the modal first
       setProgressModalVisible(false);
@@ -186,7 +204,11 @@ export const GoalDetailsScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={true}
+    >
       <View style={[styles.header, { backgroundColor: category.color }]}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -330,6 +352,9 @@ export const GoalDetailsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 100, // Add padding to ensure content is scrollable
   },
   loadingContainer: {
     flex: 1,
