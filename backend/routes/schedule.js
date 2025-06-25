@@ -1,6 +1,7 @@
 const express = require('express');
 const Schedule = require('../models/Schedule');
 const authMiddleware = require('../middleware/auth');
+const { applyRecurringTaskToSchedules, isDateInRecurrence } = require('../utils/recurrenceGenerator');
 
 const router = express.Router();
 
@@ -15,15 +16,46 @@ router.get('/:date', authMiddleware, async (req, res) => {
     
     const schedule = await Schedule.findOne({ userId: req.userId, date });
     
-    if (!schedule) {
-      return res.status(200).json({
-        userId: req.userId,
-        date,
-        blocks: [],
-      });
-    }
+    // Get all schedules with recurring tasks for this user
+    const recurringSchedules = await Schedule.find({
+      userId: req.userId,
+      'blocks.recurring': true
+    });
     
-    res.json(schedule);
+    const blocks = schedule ? [...schedule.blocks] : [];
+    const addedRecurrenceIds = new Set();
+    
+    // Check each recurring task to see if it should appear on this date
+    recurringSchedules.forEach(recurringSchedule => {
+      recurringSchedule.blocks.forEach(block => {
+        if (block.recurring && block.recurrenceRule && !addedRecurrenceIds.has(block.recurrenceId)) {
+          const originalDate = block.originalDate || recurringSchedule.date;
+          
+          if (isDateInRecurrence(block.recurrenceRule, new Date(date), new Date(originalDate))) {
+            // Check if this specific instance already exists (might be modified)
+            const existingBlock = blocks.find(b => b.recurrenceId === block.recurrenceId);
+            
+            if (!existingBlock) {
+              // Add the recurring instance
+              blocks.push({
+                ...block.toObject(),
+                id: `${block.id}-${date}`,
+                originalDate: new Date(date),
+                completed: false
+              });
+              addedRecurrenceIds.add(block.recurrenceId);
+            }
+          }
+        }
+      });
+    });
+    
+    res.json({
+      _id: schedule?._id,
+      userId: req.userId,
+      date,
+      blocks: blocks.sort((a, b) => a.startTime.localeCompare(b.startTime))
+    });
   } catch (error) {
     console.error('Get schedule error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -55,10 +87,31 @@ router.post('/', authMiddleware, async (req, res) => {
 // Update a specific block
 router.put('/', authMiddleware, async (req, res) => {
   try {
-    const { scheduleId, blockId, updates } = req.body;
+    const { scheduleId, blockId, updates, updateSeries = false } = req.body;
     
     if (!scheduleId || !blockId || !updates) {
       return res.status(400).json({ error: 'scheduleId, blockId and updates are required' });
+    }
+    
+    // Validate recurring task updates
+    if (updates.recurrenceRule) {
+      const { type, interval, daysOfWeek, endOccurrences } = updates.recurrenceRule;
+      
+      if (type && !['daily', 'weekly', 'monthly', 'custom'].includes(type)) {
+        return res.status(400).json({ error: 'Invalid recurrence type' });
+      }
+      
+      if (interval && (interval < 1 || interval > 100)) {
+        return res.status(400).json({ error: 'Interval must be between 1 and 100' });
+      }
+      
+      if (daysOfWeek && (!Array.isArray(daysOfWeek) || daysOfWeek.some(d => d < 0 || d > 6))) {
+        return res.status(400).json({ error: 'Invalid days of week' });
+      }
+      
+      if (endOccurrences && (endOccurrences < 1 || endOccurrences > 365)) {
+        return res.status(400).json({ error: 'End occurrences must be between 1 and 365' });
+      }
     }
     
     const schedule = await Schedule.findOne({ _id: scheduleId, userId: req.userId });
@@ -73,10 +126,35 @@ router.put('/', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Block not found' });
     }
     
-    schedule.blocks[blockIndex] = { ...schedule.blocks[blockIndex].toObject(), ...updates };
-    await schedule.save();
+    const block = schedule.blocks[blockIndex];
     
-    res.json(schedule);
+    // Handle recurring task series update
+    if (updateSeries && block.recurring && block.recurrenceId) {
+      // Update all instances of this recurring task
+      const allSchedules = await Schedule.find({
+        userId: req.userId,
+        'blocks.recurrenceId': block.recurrenceId
+      });
+      
+      for (const sched of allSchedules) {
+        const idx = sched.blocks.findIndex(b => b.recurrenceId === block.recurrenceId);
+        if (idx !== -1) {
+          // Only update non-completed instances for future dates
+          if (!sched.blocks[idx].completed && new Date(sched.date) >= new Date()) {
+            sched.blocks[idx] = { ...sched.blocks[idx].toObject(), ...updates };
+            await sched.save();
+          }
+        }
+      }
+      
+      res.json({ message: 'Series updated', affectedDates: allSchedules.length });
+    } else {
+      // Update single instance
+      schedule.blocks[blockIndex] = { ...schedule.blocks[blockIndex].toObject(), ...updates };
+      await schedule.save();
+      
+      res.json(schedule);
+    }
   } catch (error) {
     console.error('Update block error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -86,7 +164,7 @@ router.put('/', authMiddleware, async (req, res) => {
 // Delete a block
 router.delete('/', authMiddleware, async (req, res) => {
   try {
-    const { scheduleId, blockId } = req.body;
+    const { scheduleId, blockId, deleteSeries = false } = req.body;
     
     if (!scheduleId || !blockId) {
       return res.status(400).json({ error: 'scheduleId and blockId are required' });
@@ -98,12 +176,104 @@ router.delete('/', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Schedule not found' });
     }
     
-    schedule.blocks = schedule.blocks.filter(block => block.id !== blockId);
-    await schedule.save();
+    const blockToDelete = schedule.blocks.find(block => block.id === blockId);
     
-    res.json(schedule);
+    if (!blockToDelete) {
+      return res.status(404).json({ error: 'Block not found' });
+    }
+    
+    // Handle recurring task series deletion
+    if (deleteSeries && blockToDelete.recurring && blockToDelete.recurrenceId) {
+      // Delete all future instances of this recurring task
+      const allSchedules = await Schedule.find({
+        userId: req.userId,
+        'blocks.recurrenceId': blockToDelete.recurrenceId
+      });
+      
+      let deletedCount = 0;
+      
+      for (const sched of allSchedules) {
+        // Only delete from current date onwards
+        if (new Date(sched.date) >= new Date(schedule.date)) {
+          const originalLength = sched.blocks.length;
+          sched.blocks = sched.blocks.filter(b => b.recurrenceId !== blockToDelete.recurrenceId);
+          
+          if (sched.blocks.length < originalLength) {
+            await sched.save();
+            deletedCount++;
+          }
+        }
+      }
+      
+      res.json({ message: 'Series deleted', affectedDates: deletedCount });
+    } else {
+      // Delete single instance
+      schedule.blocks = schedule.blocks.filter(block => block.id !== blockId);
+      await schedule.save();
+      
+      res.json(schedule);
+    }
   } catch (error) {
     console.error('Delete block error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Create recurring task instances
+router.post('/recurring', authMiddleware, async (req, res) => {
+  try {
+    const { block, startDate, daysAhead = 90 } = req.body;
+    
+    if (!block || !startDate) {
+      return res.status(400).json({ error: 'Block and startDate are required' });
+    }
+    
+    if (!block.recurring || !block.recurrenceRule) {
+      return res.status(400).json({ error: 'Block must have recurring flag and recurrenceRule' });
+    }
+    
+    // Generate recurring instances
+    const scheduleUpdates = applyRecurringTaskToSchedules(block, startDate, daysAhead);
+    
+    // Update or create schedules for each date
+    const updatedSchedules = [];
+    
+    for (const { date, blocks } of scheduleUpdates) {
+      const existingSchedule = await Schedule.findOne({ userId: req.userId, date });
+      
+      if (existingSchedule) {
+        // Add new blocks to existing schedule, avoiding duplicates
+        const existingRecurrenceIds = new Set(
+          existingSchedule.blocks
+            .filter(b => b.recurrenceId)
+            .map(b => b.recurrenceId)
+        );
+        
+        const newBlocks = blocks.filter(b => !existingRecurrenceIds.has(b.recurrenceId));
+        
+        if (newBlocks.length > 0) {
+          existingSchedule.blocks.push(...newBlocks);
+          await existingSchedule.save();
+          updatedSchedules.push({ date, added: newBlocks.length });
+        }
+      } else {
+        // Create new schedule
+        const newSchedule = await Schedule.create({
+          userId: req.userId,
+          date,
+          blocks
+        });
+        updatedSchedules.push({ date, added: blocks.length });
+      }
+    }
+    
+    res.json({
+      message: 'Recurring task instances created',
+      updatedSchedules: updatedSchedules.length,
+      details: updatedSchedules
+    });
+  } catch (error) {
+    console.error('Create recurring tasks error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

@@ -27,13 +27,27 @@ export interface ActionItem {
   priority: 'high' | 'medium' | 'low';
 }
 
+export interface RecurrenceRule {
+  type: 'daily' | 'weekly' | 'monthly' | 'custom';
+  interval?: number;
+  daysOfWeek?: number[];
+  endDate?: Date;
+  endOccurrences?: number;
+  exceptions?: Date[];
+}
+
 export interface ScheduleBlock {
   id: string;
   title: string;
-  category: 'physical' | 'mental' | 'financial' | 'social';
+  category: 'physical' | 'mental' | 'financial' | 'social' | 'personal';
   startTime: string;
   endTime: string;
   completed: boolean;
+  goalId?: string;
+  recurring?: boolean;
+  recurrenceRule?: RecurrenceRule;
+  recurrenceId?: string;
+  originalDate?: Date;
 }
 
 export interface UserProfile {
