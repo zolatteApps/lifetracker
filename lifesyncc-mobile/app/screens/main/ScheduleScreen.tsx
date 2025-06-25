@@ -440,6 +440,11 @@ export const ScheduleScreen: React.FC = () => {
               />
             </View>
             
+            {/* Debug marker */}
+            <Text style={{ backgroundColor: 'yellow', padding: 10, marginVertical: 10 }}>
+              REPEAT TOGGLE SHOULD BE BELOW THIS
+            </Text>
+            
             {/* Recurrence Toggle */}
             <View style={styles.recurringContainer}>
               <Text style={styles.label}>Repeat</Text>
@@ -584,6 +589,11 @@ export const ScheduleScreen: React.FC = () => {
                 )}
               </View>
             )}
+            
+            {/* Test visibility */}
+            <Text style={{ textAlign: 'center', marginVertical: 20, color: 'red' }}>
+              If you can see this, scroll is working!
+            </Text>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity
