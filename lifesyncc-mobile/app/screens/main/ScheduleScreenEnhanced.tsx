@@ -48,6 +48,9 @@ export const ScheduleScreenEnhanced: React.FC = () => {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeView, setActiveView] = useState<ScheduleViewType>('day');
+  
+  // RECURRING TASK DEBUG - If this shows up, we're editing the right file!
+  console.log('🔴 RECURRING TASK DEBUG: ScheduleScreenEnhanced loaded!');
   const [schedule, setSchedule] = useState<ScheduleBlock[]>([]);
   const [scheduleId, setScheduleId] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -402,7 +405,9 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Task</Text>
+            <Text style={[styles.modalTitle, { backgroundColor: 'red', color: 'white' }]}>
+              🚨 RECURRING TASKS COMING! 🚨
+            </Text>
             
             <TextInput
               style={styles.input}
