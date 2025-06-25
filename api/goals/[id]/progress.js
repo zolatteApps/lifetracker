@@ -34,83 +34,63 @@ const handler = async (req, res) => {
 
     const { currentValue, progress } = req.body;
 
-    // Update progress directly on the document
+    // Prepare update object
+    const updateData = {};
+    let newProgress = goal.progress || 0;
+
+    // Calculate new progress based on goal type
     if (goal.type === 'numeric' || goal.type === 'habit') {
       if (currentValue !== undefined) {
-        goal.currentValue = currentValue;
+        updateData.currentValue = currentValue;
         // Calculate progress
         if (goal.targetValue && goal.targetValue > 0) {
-          goal.progress = Math.min(Math.round((currentValue / goal.targetValue) * 100), 100);
+          newProgress = Math.min(Math.round((currentValue / goal.targetValue) * 100), 100);
+          updateData.progress = newProgress;
         }
       }
     } else if (goal.type === 'milestone') {
       if (progress !== undefined) {
-        goal.progress = Math.min(Math.max(progress, 0), 100);
+        newProgress = Math.min(Math.max(progress, 0), 100);
+        updateData.progress = newProgress;
       }
     }
 
-    // Initialize fields if they don't exist
-    if (!goal.progressHistory) goal.progressHistory = [];
-    if (!goal.analytics) goal.analytics = {};
-
-    // Add to progress history
-    goal.progressHistory.push({
-      value: goal.progress || 0,
+    // Prepare progress history entry
+    const progressEntry = {
+      value: newProgress,
       date: new Date(),
-    });
-
-    // Keep only last 90 entries
-    if (goal.progressHistory.length > 90) {
-      goal.progressHistory = goal.progressHistory.slice(-90);
-    }
-
-    // Update analytics
-    goal.analytics.lastProgressUpdate = new Date();
-    goal.analytics.totalUpdates = (goal.analytics.totalUpdates || 0) + 1;
+    };
 
     // Mark as completed if progress reaches 100
-    if (goal.progress >= 100 && !goal.completed) {
-      goal.completed = true;
-      goal.completedAt = new Date();
+    if (newProgress >= 100 && !goal.completed) {
+      updateData.completed = true;
+      updateData.completedAt = new Date();
     }
 
-    // Use markModified to ensure Mongoose knows about the changes
-    goal.markModified('progressHistory');
-    goal.markModified('analytics');
-
-    // Try to save with error handling
-    try {
-      await goal.save({ validateBeforeSave: false });
-    } catch (saveError) {
-      console.error('Save error:', saveError);
-      // If save fails, try direct update
-      try {
-        await Goal.findByIdAndUpdate(
-          id,
-          {
-            $set: {
-              currentValue: goal.currentValue,
-              progress: goal.progress,
-              completed: goal.completed,
-              completedAt: goal.completedAt,
-              progressHistory: goal.progressHistory,
-              analytics: goal.analytics
-            }
-          },
-          { new: true }
-        );
-      } catch (updateError) {
-        console.error('Update error:', updateError);
-        return res.status(500).json({ 
-          error: 'Failed to update goal', 
-          details: updateError.message 
-        });
+    // Use findByIdAndUpdate with proper operators for atomic update
+    const updatedGoal = await Goal.findByIdAndUpdate(
+      id,
+      {
+        $set: updateData,
+        $push: { 
+          progressHistory: {
+            $each: [progressEntry],
+            $slice: -90  // Keep only last 90 entries
+          }
+        },
+        $inc: { 'analytics.totalUpdates': 1 },
+        $currentDate: { 'analytics.lastProgressUpdate': true }
+      },
+      { 
+        new: true,  // Return the updated document
+        runValidators: false  // Skip validation for this update
       }
+    );
+
+    if (!updatedGoal) {
+      return res.status(404).json({ error: 'Goal not found after update' });
     }
 
-    // Fetch the updated goal to ensure we have the latest data
-    const updatedGoal = await Goal.findById(id);
-    
     return res.status(200).json({ 
       message: 'Progress updated successfully',
       goal: updatedGoal 
