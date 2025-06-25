@@ -376,7 +376,14 @@ export const ScheduleScreen: React.FC = () => {
 
       <TouchableOpacity 
         style={styles.addButton}
-        onPress={() => setShowAddModal(true)}
+        onPress={() => {
+          console.log('Add button pressed - opening modal');
+          Alert.alert(
+            'Debug Mode Active', 
+            'The recurring task feature is being debugged. Tap OK to open the modal.',
+            [{ text: 'OK', onPress: () => setShowAddModal(true) }]
+          );
+        }}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
