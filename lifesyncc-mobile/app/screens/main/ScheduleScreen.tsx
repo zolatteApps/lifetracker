@@ -70,6 +70,15 @@ export const ScheduleScreen: React.FC = () => {
   const [editingBlock, setEditingBlock] = useState<ScheduleBlock | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
+  // Debug state
+  const [debugInfo, setDebugInfo] = useState({
+    modalHeight: 0,
+    scrollHeight: 0,
+    contentHeight: 0,
+    isScrollable: false,
+    recurringToggled: false,
+  });
+  
   const [newTask, setNewTask] = useState({
     title: '',
     category: 'personal' as const,
@@ -372,22 +381,49 @@ export const ScheduleScreen: React.FC = () => {
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
 
-      {/* Add Task Modal */}
+      {/* Add Task Modal - DEBUG VERSION */}
       <Modal
         visible={showAddModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowAddModal(false)}
+        onRequestClose={() => {
+          console.log('Modal closing');
+          setShowAddModal(false);
+        }}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalInner}>
-            <Text style={styles.modalTitle}>Add New Task</Text>
+          {/* Debug info overlay */}
+          <View style={{ position: 'absolute', top: 50, left: 10, backgroundColor: 'yellow', padding: 5, zIndex: 1000 }}>
+            <Text style={{ fontSize: 10 }}>Debug Info:</Text>
+            <Text style={{ fontSize: 10 }}>Recurring: {newTask.recurring ? 'YES' : 'NO'}</Text>
+            <Text style={{ fontSize: 10 }}>Modal Height: {debugInfo.modalHeight}</Text>
+            <Text style={{ fontSize: 10 }}>Scroll Height: {debugInfo.scrollHeight}</Text>
+          </View>
+          
+          <View 
+            style={styles.modalInner}
+            onLayout={(event) => {
+              const { height } = event.nativeEvent.layout;
+              setDebugInfo(prev => ({ ...prev, modalHeight: height }));
+              console.log('Modal inner height:', height);
+            }}
+          >
+            <Text style={styles.modalTitle}>Add New Task (DEBUG)</Text>
             
-            <ScrollView 
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={true}
-            >
+            {/* Test different approaches */}
+            <View style={{ height: 400, backgroundColor: '#f0f0f0' }}>
+              <ScrollView 
+                style={{ flex: 1, backgroundColor: '#fff' }}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={true}
+                onContentSizeChange={(w, h) => {
+                  setDebugInfo(prev => ({ ...prev, contentHeight: h }));
+                  console.log('Content height:', h);
+                }}
+                onScroll={(e) => {
+                  console.log('Scrolling:', e.nativeEvent.contentOffset.y);
+                }}
+              >
             
             <TextInput
               style={styles.input}
@@ -435,14 +471,39 @@ export const ScheduleScreen: React.FC = () => {
               />
             </View>
             
-            {/* Debug marker */}
-            <Text style={{ backgroundColor: 'yellow', padding: 10, marginVertical: 10 }}>
-              REPEAT TOGGLE SHOULD BE BELOW THIS
-            </Text>
+            {/* Debug marker 1 */}
+            <View style={{ backgroundColor: 'red', padding: 10, marginVertical: 5 }}>
+              <Text style={{ color: 'white' }}>DEBUG 1: After time inputs</Text>
+            </View>
             
-            {/* Recurrence Toggle */}
-            <View style={styles.recurringContainer}>
-              <Text style={styles.label}>Repeat</Text>
+            {/* Simple Recurring Toggle */}
+            <TouchableOpacity
+              style={{ 
+                backgroundColor: newTask.recurring ? 'green' : 'gray', 
+                padding: 15, 
+                marginVertical: 10,
+                borderRadius: 8,
+                alignItems: 'center'
+              }}
+              onPress={() => {
+                console.log('Recurring toggle pressed');
+                setNewTask({ ...newTask, recurring: !newTask.recurring });
+                setDebugInfo(prev => ({ ...prev, recurringToggled: true }));
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                RECURRING: {newTask.recurring ? 'ON' : 'OFF'} (TAP TO TOGGLE)
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Debug marker 2 */}
+            <View style={{ backgroundColor: 'blue', padding: 10, marginVertical: 5 }}>
+              <Text style={{ color: 'white' }}>DEBUG 2: After toggle</Text>
+            </View>
+            
+            {/* Old toggle code for reference */}
+            <View style={[styles.recurringContainer, { borderWidth: 2, borderColor: 'purple' }]}>
+              <Text style={styles.label}>Original Repeat Toggle:</Text>
               <TouchableOpacity
                 style={styles.recurringToggle}
                 onPress={() => {
@@ -585,10 +646,30 @@ export const ScheduleScreen: React.FC = () => {
               </View>
             )}
             
-            {/* Test visibility */}
-            <Text style={{ textAlign: 'center', marginVertical: 20, color: 'red' }}>
-              If you can see this, scroll is working!
-            </Text>
+            {/* Debug marker 3 */}
+            <View style={{ backgroundColor: 'orange', padding: 10, marginVertical: 5 }}>
+              <Text style={{ color: 'white' }}>DEBUG 3: Before recurrence options</Text>
+            </View>
+            
+            {/* Show recurring options when enabled */}
+            {newTask.recurring && (
+              <View style={{ backgroundColor: 'lightgreen', padding: 10, marginVertical: 5 }}>
+                <Text style={{ fontWeight: 'bold' }}>RECURRING OPTIONS WOULD BE HERE</Text>
+                <Text>Daily / Weekly / Monthly</Text>
+                <Text>Days of week selector</Text>
+                <Text>End conditions</Text>
+              </View>
+            )}
+            
+            {/* Debug marker 4 */}
+            <View style={{ backgroundColor: 'pink', padding: 10, marginVertical: 5 }}>
+              <Text>DEBUG 4: End of content</Text>
+            </View>
+            
+            {/* Spacer to test scrolling */}
+            <View style={{ height: 100, backgroundColor: 'lightblue', justifyContent: 'center', alignItems: 'center' }}>
+              <Text>SPACER - If you see this, scroll works!</Text>
+            </View>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -608,6 +689,50 @@ export const ScheduleScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Alternative Simple Modal for Testing */}
+      {false && showAddModal && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'flex-end'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            maxHeight: '80%',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            padding: 20
+          }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
+              Simple Modal Test
+            </Text>
+            <ScrollView style={{ maxHeight: 400 }}>
+              <Text>Can you see this?</Text>
+              <View style={{ height: 50, backgroundColor: 'red', marginVertical: 10 }} />
+              <Text>What about this?</Text>
+              <View style={{ height: 50, backgroundColor: 'blue', marginVertical: 10 }} />
+              <Text>And this?</Text>
+              <View style={{ height: 50, backgroundColor: 'green', marginVertical: 10 }} />
+              <Text>Keep scrolling...</Text>
+              <View style={{ height: 50, backgroundColor: 'yellow', marginVertical: 10 }} />
+              <Text>Almost there...</Text>
+              <View style={{ height: 50, backgroundColor: 'purple', marginVertical: 10 }} />
+              <Text>End of content!</Text>
+            </ScrollView>
+            <TouchableOpacity
+              style={{ backgroundColor: 'gray', padding: 15, marginTop: 10, borderRadius: 8 }}
+              onPress={() => setShowAddModal(false)}
+            >
+              <Text style={{ color: 'white', textAlign: 'center' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {showDatePicker && (
         <DateTimePicker
