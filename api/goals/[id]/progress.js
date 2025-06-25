@@ -85,8 +85,8 @@ const handler = async (req, res) => {
       console.error('Save error:', saveError);
       // If save fails, try direct update
       try {
-        await Goal.updateOne(
-          { _id: id },
+        await Goal.findByIdAndUpdate(
+          id,
           {
             $set: {
               currentValue: goal.currentValue,
@@ -96,10 +96,9 @@ const handler = async (req, res) => {
               progressHistory: goal.progressHistory,
               analytics: goal.analytics
             }
-          }
+          },
+          { new: true }
         );
-        // Fetch updated goal
-        goal = await Goal.findById(id);
       } catch (updateError) {
         console.error('Update error:', updateError);
         return res.status(500).json({ 
@@ -109,9 +108,12 @@ const handler = async (req, res) => {
       }
     }
 
+    // Fetch the updated goal to ensure we have the latest data
+    const updatedGoal = await Goal.findById(id);
+    
     return res.status(200).json({ 
       message: 'Progress updated successfully',
-      goal 
+      goal: updatedGoal 
     });
   } catch (error) {
     console.error('Progress update error:', error);

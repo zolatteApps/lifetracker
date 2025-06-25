@@ -74,17 +74,20 @@ export const GoalDetailsScreen: React.FC = () => {
         : { currentValue: newValue };
 
       console.log('Updating goal progress:', progressData);
-      const response = await goalService.updateProgress(goal._id || goal.id, progressData);
-      console.log('Updated goal received:', response);
+      console.log('Current goal state before update:', goal);
+      const updatedGoal = await goalService.updateProgress(goal._id || goal.id, progressData);
+      console.log('Updated goal received from API:', updatedGoal);
+      console.log('Updated goal progress value:', updatedGoal.progress);
+      
+      // Update the local goal state with the response from the API
+      setGoal(updatedGoal);
+      console.log('Goal state updated in component');
       
       // Close the modal first
       setProgressModalVisible(false);
       
       // Show success message
       Alert.alert('Success', 'Progress updated successfully!');
-      
-      // Refetch the goal data to ensure we have the latest
-      await refetchGoal();
       
       // Refresh analytics
       await fetchGoalAnalytics();

@@ -85,10 +85,13 @@ class GoalService {
   }
 
   async updateProgress(id: string, progressData: { currentValue?: number; progress?: number }): Promise<Goal> {
+    console.log('Sending progress update to API:', { id, progressData });
     const data = await this.makeRequest(`${API_URL}/api/goals/${id}/progress`, {
       method: 'PUT',
       body: JSON.stringify(progressData),
     });
+    console.log('API response:', data);
+    console.log('Goal from API response:', data.goal);
     return data.goal;
   }
 
