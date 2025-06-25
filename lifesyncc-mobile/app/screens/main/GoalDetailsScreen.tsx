@@ -69,20 +69,14 @@ export const GoalDetailsScreen: React.FC = () => {
 
   const updateGoalProgress = async (goalId: string, newValue: number) => {
     try {
-      // Note: goalId parameter is passed but we use the goal from state since we're in the details view
       const progressData = goal.type === 'milestone' 
         ? { progress: newValue }
         : { currentValue: newValue };
 
-      console.log('Updating goal progress:', progressData);
-      console.log('Current goal state before update:', goal);
       const updatedGoal = await goalService.updateProgress(goal._id || goal.id, progressData);
-      console.log('Updated goal received from API:', updatedGoal);
-      console.log('Updated goal progress value:', updatedGoal.progress);
       
       // Update the local goal state with the response from the API
       setGoal(updatedGoal);
-      console.log('Goal state updated in component');
       
       // Close the modal first
       setProgressModalVisible(false);
