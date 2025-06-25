@@ -64,13 +64,14 @@ export const GoalDetailsScreen: React.FC = () => {
         // Set mock analytics data for now to show the UI
         setAnalytics({
           analytics: {
-            averageProgressPerDay: goal.progress > 0 ? (goal.progress / 30).toFixed(2) : 0,
+            averageProgressPerDay: goal.progress > 0 ? parseFloat((goal.progress / 30).toFixed(2)) : 0,
             projectedCompletionDate: null,
             totalUpdates: 0
           },
           progressHistory: [],
           weeklyProgress: [],
-          streak: { current: 0, best: 0 }
+          streak: { current: 0, best: 0 },
+          bestDays: []
         });
       }
     } catch (error) {
@@ -78,13 +79,14 @@ export const GoalDetailsScreen: React.FC = () => {
       // Set mock analytics data for now to show the UI
       setAnalytics({
         analytics: {
-          averageProgressPerDay: goal.progress > 0 ? (goal.progress / 30).toFixed(2) : 0,
+          averageProgressPerDay: goal.progress > 0 ? parseFloat((goal.progress / 30).toFixed(2)) : 0,
           projectedCompletionDate: null,
           totalUpdates: 0
         },
         progressHistory: [],
         weeklyProgress: [],
-        streak: { current: 0, best: 0 }
+        streak: { current: 0, best: 0 },
+        bestDays: []
       });
     } finally {
       setLoading(false);
@@ -260,16 +262,16 @@ export const GoalDetailsScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        {analytics && (
+        {analytics && analytics.analytics && (
           <>
             <GoalAnalyticsCard 
               analytics={{
                 averageProgressPerDay: analytics.analytics?.averageProgressPerDay || 0,
                 projectedCompletionDate: analytics.analytics?.projectedCompletionDate,
                 totalUpdates: analytics.analytics?.totalUpdates || 0,
-                completionRate: goal.progress,
-                currentStreak: analytics.streak?.current,
-                bestStreak: analytics.streak?.best,
+                completionRate: goal.progress || 0,
+                currentStreak: analytics.streak?.current || 0,
+                bestStreak: analytics.streak?.best || 0,
               }}
               goalType={goal.type}
             />
