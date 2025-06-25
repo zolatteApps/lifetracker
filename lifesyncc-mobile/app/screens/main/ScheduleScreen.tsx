@@ -423,31 +423,22 @@ export const ScheduleScreen: React.FC = () => {
               ))}
             </View>
             
+            <Text style={styles.label}>Time</Text>
             <View style={styles.timeRow}>
-              <View style={styles.timeInput}>
-                <Text style={styles.label}>Start Time</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="HH:MM"
-                  value={newTask.startTime}
-                  onChangeText={(text) => setNewTask({ ...newTask, startTime: text })}
-                />
-              </View>
-              <View style={styles.timeInput}>
-                <Text style={styles.label}>End Time</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="HH:MM"
-                  value={newTask.endTime}
-                  onChangeText={(text) => setNewTask({ ...newTask, endTime: text })}
-                />
-              </View>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="Start (HH:MM)"
+                value={newTask.startTime}
+                onChangeText={(text) => setNewTask({ ...newTask, startTime: text })}
+              />
+              <Text style={{ marginHorizontal: 8, alignSelf: 'center' }}>to</Text>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="End (HH:MM)"
+                value={newTask.endTime}
+                onChangeText={(text) => setNewTask({ ...newTask, endTime: text })}
+              />
             </View>
-            
-            {/* Debug - Scroll indicator */}
-            <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 12, marginVertical: 8 }}>
-              ↓ Scroll down for more options ↓
-            </Text>
             
             {/* Recurrence Toggle */}
             <View style={styles.recurringContainer}>
@@ -455,10 +446,7 @@ export const ScheduleScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.recurringToggle}
                 onPress={() => {
-                  const newRecurring = !newTask.recurring;
-                  setNewTask({ ...newTask, recurring: newRecurring });
-                  setShowRecurrenceOptions(newRecurring);
-                  console.log('Recurring toggled:', newRecurring);
+                  setNewTask({ ...newTask, recurring: !newTask.recurring });
                 }}
               >
                 <View style={[styles.toggleCircle, newTask.recurring && styles.toggleCircleActive]} />
@@ -468,9 +456,9 @@ export const ScheduleScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             
-            {/* Recurrence Options */}
-            {showRecurrenceOptions && (
-              <View style={styles.recurrenceOptions}>
+            {/* Recurrence Options - Show inline when recurring is enabled */}
+            {newTask.recurring && (
+              <View style={[styles.recurrenceOptions, { marginTop: 12 }]}>
                 <Text style={styles.label}>Frequency</Text>
                 <View style={styles.frequencyButtons}>
                   {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
@@ -805,52 +793,52 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalInner: {
-    maxHeight: '90%',
-  },
-  modalScrollView: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    maxHeight: '95%',
+  },
+  modalScrollView: {
+    flex: 1,
   },
   modalScrollContent: {
-    flexGrow: 1,
     paddingBottom: 40,
   },
   modalContent: {
-    padding: 24,
+    padding: 20,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 16,
+    padding: 10,
+    fontSize: 14,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#4b5563',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   categoryButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   categoryButton: {
     borderWidth: 2,
     borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 6,
+    marginBottom: 6,
   },
   selectedCategory: {
     backgroundColor: '#f3f4f6',
@@ -862,12 +850,9 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  timeInput: {
-    flex: 1,
-    marginHorizontal: 4,
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -928,9 +913,9 @@ const styles = StyleSheet.create({
   },
   recurrenceOptions: {
     backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
   },
   frequencyButtons: {
     flexDirection: 'row',
