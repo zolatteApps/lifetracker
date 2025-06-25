@@ -26,11 +26,29 @@ const handler = async (req, res) => {
   try {
     await connectDB();
 
+    console.log('=== PROGRESS UPDATE DEBUG START ===');
+    console.log('Goal ID:', id);
+    console.log('User ID:', req.userId);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
     // Find goal and verify ownership
     const goal = await Goal.findOne({ _id: id, userId: req.userId });
     if (!goal) {
+      console.log('Goal not found for ID:', id, 'and userId:', req.userId);
       return res.status(404).json({ error: 'Goal not found' });
     }
+
+    console.log('Found goal:', {
+      id: goal._id,
+      type: goal.type,
+      progress: goal.progress,
+      currentValue: goal.currentValue,
+      targetValue: goal.targetValue,
+      hasAnalytics: !!goal.analytics,
+      hasProgressHistory: !!goal.progressHistory,
+      analyticsStructure: goal.analytics ? Object.keys(goal.analytics) : 'none',
+      progressHistoryLength: goal.progressHistory ? goal.progressHistory.length : 0
+    });
 
     const { currentValue, progress } = req.body;
 
@@ -55,6 +73,9 @@ const handler = async (req, res) => {
       }
     }
 
+    console.log('Calculated new progress:', newProgress);
+    console.log('Update data so far:', updateData);
+
     // Prepare progress history entry
     const progressEntry = {
       value: newProgress,
@@ -67,34 +88,98 @@ const handler = async (req, res) => {
       updateData.completedAt = new Date();
     }
 
-    // Add analytics update to updateData
-    if (!updateData.analytics) {
-      updateData.analytics = {};
+    // STEP 1: Try minimal update first
+    console.log('Step 1: Trying minimal update with just progress...');
+    try {
+      const minimalUpdate = await Goal.findByIdAndUpdate(
+        id,
+        { $set: { progress: newProgress, currentValue: updateData.currentValue || goal.currentValue } },
+        { new: true, runValidators: false }
+      );
+      console.log('Minimal update successful');
+    } catch (minimalError) {
+      console.error('Minimal update failed:', minimalError.message);
+      throw minimalError;
     }
-    updateData['analytics.lastProgressUpdate'] = new Date();
 
-    // Use findByIdAndUpdate with proper operators for atomic update
-    const updatedGoal = await Goal.findByIdAndUpdate(
-      id,
-      {
-        $set: updateData,
-        $push: { 
-          progressHistory: {
-            $each: [progressEntry],
-            $slice: -90  // Keep only last 90 entries
+    // STEP 2: Try adding analytics update
+    console.log('Step 2: Trying to update analytics...');
+    try {
+      // Initialize analytics if it doesn't exist
+      if (!goal.analytics) {
+        console.log('Initializing analytics object...');
+        await Goal.findByIdAndUpdate(
+          id,
+          { $set: { analytics: { totalUpdates: 0, lastProgressUpdate: new Date() } } },
+          { new: true }
+        );
+      }
+
+      // Now update analytics
+      const analyticsUpdate = await Goal.findByIdAndUpdate(
+        id,
+        { 
+          $set: { 'analytics.lastProgressUpdate': new Date() },
+          $inc: { 'analytics.totalUpdates': 1 }
+        },
+        { new: true, runValidators: false }
+      );
+      console.log('Analytics update successful');
+    } catch (analyticsError) {
+      console.error('Analytics update failed:', analyticsError.message);
+      console.error('Full error:', analyticsError);
+    }
+
+    // STEP 3: Try adding progress history
+    console.log('Step 3: Trying to update progress history...');
+    try {
+      // Initialize progressHistory if it doesn't exist
+      if (!goal.progressHistory || !Array.isArray(goal.progressHistory)) {
+        console.log('Initializing progressHistory array...');
+        await Goal.findByIdAndUpdate(
+          id,
+          { $set: { progressHistory: [] } },
+          { new: true }
+        );
+      }
+
+      // Now update progress history
+      const historyUpdate = await Goal.findByIdAndUpdate(
+        id,
+        { 
+          $push: { 
+            progressHistory: {
+              $each: [progressEntry],
+              $slice: -90
+            }
           }
         },
-        $inc: { 'analytics.totalUpdates': 1 }
-      },
-      { 
-        new: true,  // Return the updated document
-        runValidators: false  // Skip validation for this update
-      }
-    );
+        { new: true, runValidators: false }
+      );
+      console.log('Progress history update successful');
+    } catch (historyError) {
+      console.error('Progress history update failed:', historyError.message);
+      console.error('Full error:', historyError);
+    }
 
+    // STEP 4: Get the final updated goal
+    console.log('Step 4: Fetching final updated goal...');
+    const updatedGoal = await Goal.findById(id);
+    
     if (!updatedGoal) {
+      console.error('Could not fetch updated goal');
       return res.status(404).json({ error: 'Goal not found after update' });
     }
+
+    console.log('Final updated goal:', {
+      id: updatedGoal._id,
+      progress: updatedGoal.progress,
+      currentValue: updatedGoal.currentValue,
+      analyticsUpdated: updatedGoal.analytics?.lastProgressUpdate,
+      historyLength: updatedGoal.progressHistory?.length
+    });
+
+    console.log('=== PROGRESS UPDATE DEBUG END ===');
 
     return res.status(200).json({ 
       message: 'Progress updated successfully',
