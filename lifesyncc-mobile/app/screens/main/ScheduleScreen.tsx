@@ -10,7 +10,8 @@ import {
   Alert,
   Modal,
   TextInput,
-  Platform
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
@@ -378,8 +379,16 @@ export const ScheduleScreen: React.FC = () => {
         transparent={true}
         onRequestClose={() => setShowAddModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <ScrollView style={styles.modalScrollView}>
+        <KeyboardAvoidingView 
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView 
+            style={styles.modalScrollView}
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Add New Task</Text>
             
@@ -439,8 +448,10 @@ export const ScheduleScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.recurringToggle}
                 onPress={() => {
-                  setNewTask({ ...newTask, recurring: !newTask.recurring });
-                  setShowRecurrenceOptions(!newTask.recurring);
+                  const newRecurring = !newTask.recurring;
+                  setNewTask({ ...newTask, recurring: newRecurring });
+                  setShowRecurrenceOptions(newRecurring);
+                  console.log('Recurring toggled:', newRecurring);
                 }}
               >
                 <View style={[styles.toggleCircle, newTask.recurring && styles.toggleCircleActive]} />
@@ -595,7 +606,7 @@ export const ScheduleScreen: React.FC = () => {
             </View>
             </View>
           </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {showDatePicker && (
@@ -786,14 +797,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalScrollView: {
-    maxHeight: '90%',
+    maxHeight: '80%',
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   modalTitle: {
     fontSize: 24,
