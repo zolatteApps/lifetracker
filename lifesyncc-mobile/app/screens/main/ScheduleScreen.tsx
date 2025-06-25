@@ -379,17 +379,19 @@ export const ScheduleScreen: React.FC = () => {
         transparent={true}
         onRequestClose={() => setShowAddModal(false)}
       >
-        <KeyboardAvoidingView 
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView 
-            style={styles.modalScrollView}
-            contentContainerStyle={styles.modalScrollContent}
-            showsVerticalScrollIndicator={true}
-            keyboardShouldPersistTaps="handled"
+        <View style={styles.modalContainer}>
+          <KeyboardAvoidingView 
+            style={styles.modalInner}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-            <View style={styles.modalContent}>
+            <ScrollView 
+              style={styles.modalScrollView}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+              bounces={true}
+            >
+              <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Add New Task</Text>
             
             <TextInput
@@ -441,6 +443,11 @@ export const ScheduleScreen: React.FC = () => {
                 />
               </View>
             </View>
+            
+            {/* Debug - Scroll indicator */}
+            <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 12, marginVertical: 8 }}>
+              ↓ Scroll down for more options ↓
+            </Text>
             
             {/* Recurrence Toggle */}
             <View style={styles.recurringContainer}>
@@ -606,7 +613,8 @@ export const ScheduleScreen: React.FC = () => {
             </View>
             </View>
           </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {showDatePicker && (
@@ -796,19 +804,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  modalInner: {
+    maxHeight: '90%',
+  },
   modalScrollView: {
-    maxHeight: '80%',
-  },
-  modalScrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+  modalContent: {
     padding: 24,
-    paddingBottom: 20,
   },
   modalTitle: {
     fontSize: 24,
