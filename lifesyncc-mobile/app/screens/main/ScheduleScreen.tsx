@@ -26,6 +26,15 @@ interface TimeSlot {
   completed: boolean;
 }
 
+interface RecurrenceRule {
+  type: 'daily' | 'weekly' | 'monthly' | 'custom';
+  interval?: number;
+  daysOfWeek?: number[];
+  endDate?: Date;
+  endOccurrences?: number;
+  exceptions?: Date[];
+}
+
 interface ScheduleBlock {
   id: string;
   title: string;
@@ -34,6 +43,10 @@ interface ScheduleBlock {
   endTime: string;
   completed: boolean;
   goalId?: string;
+  recurring?: boolean;
+  recurrenceRule?: RecurrenceRule;
+  recurrenceId?: string;
+  originalDate?: Date;
 }
 
 const categoryColors = {
@@ -61,7 +74,17 @@ export const ScheduleScreen: React.FC = () => {
     category: 'personal' as const,
     startTime: '09:00',
     endTime: '10:00',
+    recurring: false,
+    recurrenceRule: {
+      type: 'weekly' as const,
+      interval: 1,
+      daysOfWeek: [] as number[],
+      endOccurrences: undefined as number | undefined,
+      endDate: undefined as Date | undefined,
+    },
   });
+  const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
+  const [recurrenceEndType, setRecurrenceEndType] = useState<'never' | 'date' | 'occurrences'>('never');
 
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = { 
@@ -139,6 +162,11 @@ export const ScheduleScreen: React.FC = () => {
       return;
     }
     
+    if (newTask.recurring && newTask.recurrenceRule.type === 'weekly' && newTask.recurrenceRule.daysOfWeek?.length === 0) {
+      Alert.alert('Error', 'Please select at least one day of the week for recurring tasks');
+      return;
+    }
+    
     const newBlock: ScheduleBlock = {
       id: scheduleService.generateBlockId(),
       title: newTask.title,
@@ -146,6 +174,15 @@ export const ScheduleScreen: React.FC = () => {
       startTime: newTask.startTime,
       endTime: newTask.endTime,
       completed: false,
+      recurring: newTask.recurring,
+      recurrenceRule: newTask.recurring ? {
+        type: newTask.recurrenceRule.type,
+        interval: newTask.recurrenceRule.interval,
+        daysOfWeek: newTask.recurrenceRule.daysOfWeek,
+        endDate: recurrenceEndType === 'date' ? newTask.recurrenceRule.endDate : undefined,
+        endOccurrences: recurrenceEndType === 'occurrences' ? newTask.recurrenceRule.endOccurrences : undefined,
+      } : undefined,
+      recurrenceId: newTask.recurring ? scheduleService.generateBlockId() : undefined,
     };
     
     try {
@@ -156,11 +193,21 @@ export const ScheduleScreen: React.FC = () => {
       setSchedule(updatedSchedule.blocks);
       setScheduleId(updatedSchedule._id);
       setShowAddModal(false);
+      setShowRecurrenceOptions(false);
+      setRecurrenceEndType('never');
       setNewTask({
         title: '',
         category: 'personal',
         startTime: '09:00',
         endTime: '10:00',
+        recurring: false,
+        recurrenceRule: {
+          type: 'weekly',
+          interval: 1,
+          daysOfWeek: [],
+          endOccurrences: undefined,
+          endDate: undefined,
+        },
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to add task');
@@ -332,8 +379,9 @@ export const ScheduleScreen: React.FC = () => {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Task</Text>
+          <ScrollView style={styles.modalScrollView}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Add New Task</Text>
             
             <TextInput
               style={styles.input}
@@ -385,6 +433,152 @@ export const ScheduleScreen: React.FC = () => {
               </View>
             </View>
             
+            {/* Recurrence Toggle */}
+            <View style={styles.recurringContainer}>
+              <Text style={styles.label}>Repeat</Text>
+              <TouchableOpacity
+                style={styles.recurringToggle}
+                onPress={() => {
+                  setNewTask({ ...newTask, recurring: !newTask.recurring });
+                  setShowRecurrenceOptions(!newTask.recurring);
+                }}
+              >
+                <View style={[styles.toggleCircle, newTask.recurring && styles.toggleCircleActive]} />
+                <Text style={styles.recurringToggleText}>
+                  {newTask.recurring ? 'On' : 'Off'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Recurrence Options */}
+            {showRecurrenceOptions && (
+              <View style={styles.recurrenceOptions}>
+                <Text style={styles.label}>Frequency</Text>
+                <View style={styles.frequencyButtons}>
+                  {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                    <TouchableOpacity
+                      key={freq}
+                      style={[
+                        styles.frequencyButton,
+                        newTask.recurrenceRule.type === freq && styles.selectedFrequency,
+                      ]}
+                      onPress={() => setNewTask({
+                        ...newTask,
+                        recurrenceRule: { ...newTask.recurrenceRule, type: freq }
+                      })}
+                    >
+                      <Text style={[
+                        styles.frequencyButtonText,
+                        newTask.recurrenceRule.type === freq && styles.selectedFrequencyText,
+                      ]}>
+                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                {/* Weekly Days Selection */}
+                {newTask.recurrenceRule.type === 'weekly' && (
+                  <View style={styles.daysContainer}>
+                    <Text style={styles.label}>Days of Week</Text>
+                    <View style={styles.daysButtons}>
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <TouchableOpacity
+                          key={day}
+                          style={[
+                            styles.dayButton,
+                            newTask.recurrenceRule.daysOfWeek?.includes(index) && styles.selectedDay,
+                          ]}
+                          onPress={() => {
+                            const days = newTask.recurrenceRule.daysOfWeek || [];
+                            const updatedDays = days.includes(index)
+                              ? days.filter(d => d !== index)
+                              : [...days, index];
+                            setNewTask({
+                              ...newTask,
+                              recurrenceRule: { ...newTask.recurrenceRule, daysOfWeek: updatedDays }
+                            });
+                          }}
+                        >
+                          <Text style={[
+                            styles.dayButtonText,
+                            newTask.recurrenceRule.daysOfWeek?.includes(index) && styles.selectedDayText,
+                          ]}>
+                            {day}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                
+                {/* Interval */}
+                <View style={styles.intervalContainer}>
+                  <Text style={styles.label}>Every</Text>
+                  <TextInput
+                    style={[styles.input, styles.intervalInput]}
+                    placeholder="1"
+                    value={newTask.recurrenceRule.interval?.toString() || '1'}
+                    onChangeText={(text) => {
+                      const num = parseInt(text) || 1;
+                      setNewTask({
+                        ...newTask,
+                        recurrenceRule: { ...newTask.recurrenceRule, interval: num }
+                      });
+                    }}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.intervalText}>
+                    {newTask.recurrenceRule.type === 'daily' ? 'day(s)' :
+                     newTask.recurrenceRule.type === 'weekly' ? 'week(s)' :
+                     newTask.recurrenceRule.type === 'monthly' ? 'month(s)' : ''}
+                  </Text>
+                </View>
+                
+                {/* End Condition */}
+                <Text style={styles.label}>Ends</Text>
+                <View style={styles.endButtons}>
+                  {(['never', 'date', 'occurrences'] as const).map((endType) => (
+                    <TouchableOpacity
+                      key={endType}
+                      style={[
+                        styles.endButton,
+                        recurrenceEndType === endType && styles.selectedEnd,
+                      ]}
+                      onPress={() => setRecurrenceEndType(endType)}
+                    >
+                      <Text style={[
+                        styles.endButtonText,
+                        recurrenceEndType === endType && styles.selectedEndText,
+                      ]}>
+                        {endType === 'never' ? 'Never' :
+                         endType === 'date' ? 'On Date' : 'After'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                {recurrenceEndType === 'occurrences' && (
+                  <View style={styles.occurrencesContainer}>
+                    <TextInput
+                      style={[styles.input, styles.occurrencesInput]}
+                      placeholder="10"
+                      value={newTask.recurrenceRule.endOccurrences?.toString() || ''}
+                      onChangeText={(text) => {
+                        const num = parseInt(text) || undefined;
+                        setNewTask({
+                          ...newTask,
+                          recurrenceRule: { ...newTask.recurrenceRule, endOccurrences: num }
+                        });
+                      }}
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.occurrencesText}>occurrences</Text>
+                  </View>
+                )}
+              </View>
+            )}
+            
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
@@ -399,7 +593,8 @@ export const ScheduleScreen: React.FC = () => {
                 <Text style={styles.saveButtonText}>Add Task</Text>
               </TouchableOpacity>
             </View>
-          </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -590,6 +785,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  modalScrollView: {
+    maxHeight: '90%',
+  },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
@@ -674,5 +872,148 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  recurringContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  recurringToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  toggleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#9ca3af',
+    marginRight: 8,
+  },
+  toggleCircleActive: {
+    backgroundColor: '#4F46E5',
+  },
+  recurringToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  recurrenceOptions: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  frequencyButtons: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  frequencyButton: {
+    flex: 1,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  selectedFrequency: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  frequencyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#4b5563',
+  },
+  selectedFrequencyText: {
+    color: '#fff',
+  },
+  daysContainer: {
+    marginBottom: 16,
+  },
+  daysButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedDay: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  dayButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  selectedDayText: {
+    color: '#fff',
+  },
+  intervalContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  intervalInput: {
+    width: 60,
+    marginHorizontal: 8,
+    marginBottom: 0,
+  },
+  intervalText: {
+    fontSize: 14,
+    color: '#4b5563',
+  },
+  endButtons: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  endButton: {
+    flex: 1,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  selectedEnd: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  endButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#4b5563',
+  },
+  selectedEndText: {
+    color: '#fff',
+  },
+  occurrencesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  occurrencesInput: {
+    width: 80,
+    marginRight: 8,
+    marginBottom: 0,
+  },
+  occurrencesText: {
+    fontSize: 14,
+    color: '#4b5563',
   },
 });

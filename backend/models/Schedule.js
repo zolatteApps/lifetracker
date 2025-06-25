@@ -34,6 +34,33 @@ const scheduleBlockSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  recurrenceRule: {
+    type: {
+      type: String,
+      enum: ['daily', 'weekly', 'monthly', 'custom'],
+      required: false,
+    },
+    interval: {
+      type: Number,
+      default: 1,
+    },
+    daysOfWeek: [{
+      type: Number,
+      min: 0,
+      max: 6,
+    }],
+    endDate: Date,
+    endOccurrences: Number,
+    exceptions: [Date],
+  },
+  recurrenceId: {
+    type: String,
+    required: false,
+  },
+  originalDate: {
+    type: Date,
+    required: false,
+  },
 });
 
 const scheduleSchema = new mongoose.Schema({
