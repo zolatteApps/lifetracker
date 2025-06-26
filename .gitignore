@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules/
 /.pnp
 .pnp.js
 
@@ -24,3 +25,26 @@ yarn-error.log*
 backend/.env
 .vercel
 .env*.local
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Log files
+*.log
+server.log
+
+# OS specific files
+Thumbs.db
+
+# Temporary directories
+imgss/
+temp/
+tmp/
