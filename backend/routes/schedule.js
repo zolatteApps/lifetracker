@@ -222,12 +222,20 @@ router.delete('/', authMiddleware, async (req, res) => {
 // Create recurring task instances
 router.post('/recurring', authMiddleware, async (req, res) => {
   try {
+    console.log('Recurring endpoint hit - v3');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const { block, startDate, daysAhead = 90 } = req.body;
     
-    console.log('Received recurring task request:', JSON.stringify({ block, startDate, daysAhead }, null, 2));
+    console.log('Extracted values:', { 
+      hasBlock: !!block, 
+      hasStartDate: !!startDate, 
+      startDate, 
+      startDateType: typeof startDate 
+    });
     
     if (!block || !startDate) {
-      console.log('Missing block or startDate:', { hasBlock: !!block, hasStartDate: !!startDate });
+      console.log('Missing required fields');
       return res.status(400).json({ error: 'Block and startDate are required' });
     }
     

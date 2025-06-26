@@ -110,9 +110,15 @@ class ScheduleService {
     try {
       console.log('Creating recurring task with data:', JSON.stringify(task, null, 2));
       const response = await apiService.post('/api/schedule/recurring', task);
+      console.log('Recurring task created successfully:', response);
       return response;
     } catch (error) {
       console.error('Error creating recurring task:', error);
+      console.error('Error details:', error.message);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
       throw error;
     }
   }
