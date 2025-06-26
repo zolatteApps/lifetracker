@@ -22,7 +22,7 @@
       "destination": "/api/$1"
     },
     {
-      "src": "/(.*)",
+      "source": "/(.*)",
       "destination": "/build/$1"
     }
   ],
