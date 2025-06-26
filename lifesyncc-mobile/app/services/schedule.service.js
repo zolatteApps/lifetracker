@@ -36,7 +36,7 @@ class ScheduleService {
 
   async getSchedule(date) {
     try {
-      const response = await apiService.request(`/api/schedule/${date}`, {
+      const response = await apiService.request(`/api/schedule/date?date=${date}`, {
         method: 'GET',
       });
       // Cache the successful response
