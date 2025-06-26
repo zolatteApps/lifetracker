@@ -194,6 +194,15 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       return;
     }
     
+    // Validate recurring task settings
+    if (newTask.recurring) {
+      if (newTask.recurrenceRule.type === 'weekly' && 
+          (!newTask.recurrenceRule.daysOfWeek || newTask.recurrenceRule.daysOfWeek.length === 0)) {
+        Alert.alert('Error', 'Please select at least one day of the week for weekly recurrence');
+        return;
+      }
+    }
+    
     const newBlock: ScheduleBlock = {
       id: scheduleService.generateBlockId(),
       title: newTask.title,
@@ -218,12 +227,19 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       if (newTask.recurring) {
         // For recurring tasks, use the recurring endpoint
         const startDate = scheduleService.formatDateForAPI(selectedDate);
-        console.log('Creating recurring task with startDate:', startDate);
-        const recurringTask = {
-          block: newBlock,
+        
+        // Backend expects recurrenceRule outside the block
+        const { recurrenceRule, ...blockForApi } = newBlock;
+
+        const recurringTaskPayload = {
+          block: blockForApi,
+          recurrenceRule: recurrenceRule,
           startDate: startDate,
         };
-        updatedSchedule = await scheduleService.createRecurringTask(recurringTask);
+
+        console.log('Sending to API:', JSON.stringify(recurringTaskPayload, null, 2));
+        updatedSchedule = await scheduleService.createRecurringTask(recurringTaskPayload);
+        
         // Refresh the current day's schedule to show the new recurring task
         const currentSchedule = await scheduleService.getSchedule(
           scheduleService.formatDateForAPI(selectedDate)
@@ -256,7 +272,18 @@ export const ScheduleScreenEnhanced: React.FC = () => {
         },
       });
     } catch (error) {
-      Alert.alert('Error', 'Failed to add task');
+      console.error('Error adding task:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add task';
+      Alert.alert(
+        'Error', 
+        errorMessage,
+        [
+          { 
+            text: 'OK',
+            onPress: () => console.log('Error acknowledged')
+          }
+        ]
+      );
     }
   };
 
