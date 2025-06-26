@@ -1,7 +1,14 @@
 const connectDB = require('../lib/mongodb');
 const Schedule = require('../models/Schedule');
 const { verifyToken } = require('../lib/auth-middleware');
-const { applyRecurringTaskToSchedules, isDateInRecurrence } = require('../utils/recurrenceGenerator');
+
+let applyRecurringTaskToSchedules;
+try {
+  const recurrenceGenerator = require('./recurrenceGenerator');
+  applyRecurringTaskToSchedules = recurrenceGenerator.applyRecurringTaskToSchedules;
+} catch (error) {
+  console.error('Error loading recurrenceGenerator:', error);
+}
 
 async function handler(req, res) {
   // Set CORS headers
@@ -56,10 +63,23 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
     }
     
+    // Check if function is loaded
+    if (!applyRecurringTaskToSchedules) {
+      console.error('applyRecurringTaskToSchedules function not loaded');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    
     // Generate recurring instances
     console.log('Generating recurring instances...');
-    const scheduleUpdates = applyRecurringTaskToSchedules(block, startDate, daysAhead);
-    console.log('Schedule updates generated:', scheduleUpdates.length, 'dates');
+    let scheduleUpdates;
+    try {
+      scheduleUpdates = applyRecurringTaskToSchedules(block, startDate, daysAhead);
+      console.log('Schedule updates generated:', scheduleUpdates.length, 'dates');
+    } catch (error) {
+      console.error('Error generating recurring instances:', error);
+      console.error('Error stack:', error.stack);
+      return res.status(500).json({ error: 'Error generating recurring instances' });
+    }
     
     // Update or create schedules for each date
     const updatedSchedules = [];
