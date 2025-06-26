@@ -224,7 +224,7 @@ router.post('/recurring', authMiddleware, async (req, res) => {
   try {
     const { block, startDate, daysAhead = 90 } = req.body;
     
-    console.log('Received recurring task request:', JSON.stringify({ block, startDate, daysAhead }, null, 2));
+    console.log('Received recurring task request (v2):', JSON.stringify({ block, startDate, daysAhead }, null, 2));
     
     if (!block || !startDate) {
       console.log('Missing block or startDate:', { hasBlock: !!block, hasStartDate: !!startDate });
