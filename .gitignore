@@ -48,3 +48,8 @@ Thumbs.db
 imgss/
 temp/
 tmp/
+
+# Mobile app specific files
+lifesyncc-mobile/app/config/environment.js
+lifesyncc-mobile/app/screens/main/ScheduleScreen.tsx.backup
+lifesyncc-mobile/app/screens/main/TestScreen.tsx
