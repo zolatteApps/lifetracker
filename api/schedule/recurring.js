@@ -39,6 +39,7 @@ async function handler(req, res) {
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     
     const { block, startDate, daysAhead = 90 } = req.body;
+    console.log('Block and startDate after destructuring:', { block, startDate });
     const userId = req.userId;
     
     console.log('Extracted values:', { 
@@ -68,11 +69,13 @@ async function handler(req, res) {
     
     // Generate recurring instances
     const scheduleUpdates = applyRecurringTaskToSchedules(block, startDate, daysAhead);
+    console.log('Schedule updates generated:', scheduleUpdates);
     
     // Update or create schedules for each date
     const updatedSchedules = [];
     
     for (const { date, blocks } of scheduleUpdates) {
+      console.log('Processing date:', date, 'with blocks:', blocks);
       const existingSchedule = await Schedule.findOne({ userId, date });
       
       if (existingSchedule) {
