@@ -90,13 +90,20 @@ function generateRecurringInstances(baseBlock, startDate, endDate) {
       // Create instance for this date
       const instance = {
         ...baseBlock,
-        id: `${baseBlock.id}-${currentDate.format('YYYY-MM-DD')}`,
+        id: `${baseBlock.id || 'block'}-${currentDate.format('YYYY-MM-DD')}`,
+        recurrenceId: `rec-${baseBlock.id || Math.random().toString(36).substr(2, 9)}`,
         originalDate: currentDate.toDate(),
         completed: false, // New instances start as not completed
+        // Ensure all required fields are present
+        title: baseBlock.title,
+        category: baseBlock.category,
+        startTime: baseBlock.startTime,
+        endTime: baseBlock.endTime
       };
       
       // Remove the recurrence rule from individual instances
       delete instance.recurrenceRule;
+      delete instance.recurring;
       
       instances.push({
         date: currentDate.format('YYYY-MM-DD'),
