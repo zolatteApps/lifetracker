@@ -4,6 +4,13 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": { "outputDirectory": "build" }
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 10
+      }
     }
   ],
   "routes": [
@@ -16,14 +23,6 @@
       "dest": "/build/$1"
     }
   ],
-  "functions": {
-    "api/auth/*.js": {
-      "maxDuration": 10
-    },
-    "api/schedule/*.js": {
-      "maxDuration": 10
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
