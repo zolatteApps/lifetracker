@@ -3,7 +3,10 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "outputDirectory": "build" }
+      "config": {
+        "outputDirectory": "build",
+        "buildCommand": "npm run build"
+      }
     },
     {
       "src": "api/**/*.js",
@@ -19,7 +22,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/(.*)",
+      "src": "/(.*)",
       "destination": "/build/$1"
     }
   ],
