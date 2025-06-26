@@ -1,21 +1,4 @@
 {
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "outputDirectory": "build",
-        "buildCommand": "npm run build"
-      }
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 10
-      }
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -23,7 +6,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/build/$1"
+      "destination": "/index.html"
     }
   ],
   "headers": [
