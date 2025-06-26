@@ -108,14 +108,26 @@ class ScheduleService {
 
   async createRecurringTask(task) {
     try {
+      console.log('Original task data:', JSON.stringify(task, null, 2));
+      
+      // Extract the block data from the task
+      // The task structure might have the block nested or at root level
+      const blockData = task.block || task;
+      
       // Transform the data to match what the API expects
       const requestData = {
         block: {
-          ...task,
+          id: blockData.id,
+          title: blockData.title,
+          category: blockData.category,
+          startTime: blockData.startTime,
+          endTime: blockData.endTime,
+          completed: blockData.completed || false,
           recurring: true,
-          recurrenceRule: task.recurrenceRule
+          recurrenceRule: blockData.recurrenceRule || task.recurrenceRule,
+          recurrenceId: blockData.recurrenceId
         },
-        startDate: task.startDate,
+        startDate: task.startDate || blockData.startDate,
         daysAhead: 90 // Optional, defaults to 90 in API
       };
       
