@@ -40,9 +40,21 @@ async function handler(req, res) {
     console.log('Extracted data:', { 
       hasBlock: !!block, 
       hasStartDate: !!startDate, 
-      blockData: block,
+      blockData: JSON.stringify(block, null, 2),
       startDate
     });
+    
+    // Log specific block properties
+    if (block) {
+      console.log('Block properties:', {
+        title: block.title,
+        category: block.category,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        recurring: block.recurring,
+        recurrenceRule: block.recurrenceRule
+      });
+    }
     
     const userId = req.userId;
     
@@ -54,6 +66,17 @@ async function handler(req, res) {
     if (!block.recurring || !block.recurrenceRule) {
       console.log('Missing recurring flag or recurrenceRule');
       return res.status(400).json({ error: 'Block must have recurring flag and recurrenceRule' });
+    }
+    
+    // Validate required block fields
+    const requiredFields = ['title', 'category', 'startTime', 'endTime'];
+    const missingFields = requiredFields.filter(field => !block[field]);
+    
+    if (missingFields.length > 0) {
+      console.log('Missing required block fields:', missingFields);
+      return res.status(400).json({ 
+        error: `Missing required block fields: ${missingFields.join(', ')}` 
+      });
     }
     
     // Validate date format
