@@ -3,7 +3,7 @@
 
 const USE_LOCAL_API = false; // Set to false to use production API
 
-const LOCAL_IP = '192.168.1.4'; // Update with your computer's IP
+const LOCAL_IP = '192.168.66.119'; // Update with your computer's IP
 const LOCAL_API_URL = `http://${LOCAL_IP}:5000`;
 const PRODUCTION_API_URL = 'https://lifetracker-ten.vercel.app';
 

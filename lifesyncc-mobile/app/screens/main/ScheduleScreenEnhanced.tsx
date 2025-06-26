@@ -237,7 +237,6 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           startDate: startDate,
         };
 
-        console.log('Sending to API:', JSON.stringify(recurringTaskPayload, null, 2));
         updatedSchedule = await scheduleService.createRecurringTask(recurringTaskPayload);
         
         // Refresh the current day's schedule to show the new recurring task
