@@ -108,8 +108,19 @@ class ScheduleService {
 
   async createRecurringTask(task) {
     try {
-      console.log('Creating recurring task with data:', JSON.stringify(task, null, 2));
-      const response = await apiService.post('/api/schedule/recurring', task);
+      // Transform the data to match what the API expects
+      const requestData = {
+        block: {
+          ...task,
+          recurring: true,
+          recurrenceRule: task.recurrenceRule
+        },
+        startDate: task.startDate,
+        daysAhead: 90 // Optional, defaults to 90 in API
+      };
+      
+      console.log('Creating recurring task with data:', JSON.stringify(requestData, null, 2));
+      const response = await apiService.post('/api/schedule/recurring', requestData);
       console.log('Recurring task created successfully:', response);
       return response;
     } catch (error) {
