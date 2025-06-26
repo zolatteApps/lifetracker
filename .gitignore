@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules/
 /.pnp
 .pnp.js
 /backend/node_modules
@@ -26,6 +27,32 @@ backend/.env
 .vercel
 .env*.local
 
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Log files
+*.log
+server.log
+
+# OS specific files
+Thumbs.db
+
+# Temporary directories
+imgss/
+temp/
+tmp/
+
+# Mobile app specific files
+lifesyncc-mobile/app/config/environment.js
 lifesyncc-mobile/app/config/environment.js
 imgss/
 lifesyncc-mobile/app/screens/main/ScheduleScreen.tsx.backup
