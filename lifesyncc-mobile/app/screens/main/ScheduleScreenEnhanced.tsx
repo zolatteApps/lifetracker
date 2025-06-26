@@ -24,6 +24,15 @@ import { ScheduleViewSwitcher, ScheduleViewType } from '../../components/Schedul
 import { ScheduleWeeklyView } from '../../components/ScheduleWeeklyView';
 import { ScheduleMonthlyView } from '../../components/ScheduleMonthlyView';
 
+interface RecurrenceRule {
+  type: 'daily' | 'weekly' | 'monthly' | 'custom';
+  interval?: number;
+  daysOfWeek?: number[];
+  endDate?: Date;
+  endOccurrences?: number;
+  exceptions?: Date[];
+}
+
 interface ScheduleBlock {
   id: string;
   title: string;
@@ -32,6 +41,10 @@ interface ScheduleBlock {
   endTime: string;
   completed: boolean;
   goalId?: string;
+  recurring?: boolean;
+  recurrenceRule?: RecurrenceRule;
+  recurrenceId?: string;
+  originalDate?: Date;
 }
 
 const categoryColors = {
@@ -48,6 +61,9 @@ export const ScheduleScreenEnhanced: React.FC = () => {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeView, setActiveView] = useState<ScheduleViewType>('day');
+  
+  // RECURRING TASK DEBUG - If this shows up, we're editing the right file!
+  console.log('🔴 RECURRING TASK DEBUG: ScheduleScreenEnhanced loaded!');
   const [schedule, setSchedule] = useState<ScheduleBlock[]>([]);
   const [scheduleId, setScheduleId] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -84,7 +100,16 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     category: 'personal' as const,
     startTime: '09:00',
     endTime: '10:00',
+    recurring: false,
+    recurrenceRule: {
+      type: 'weekly' as const,
+      interval: 1,
+      daysOfWeek: [] as number[],
+      endOccurrences: undefined as number | undefined,
+      endDate: undefined as Date | undefined,
+    },
   });
+  const [recurrenceEndType, setRecurrenceEndType] = useState<'never' | 'date' | 'occurrences'>('never');
 
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = { 
@@ -176,21 +201,59 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       startTime: newTask.startTime,
       endTime: newTask.endTime,
       completed: false,
+      recurring: newTask.recurring,
+      recurrenceRule: newTask.recurring ? {
+        type: newTask.recurrenceRule.type,
+        interval: newTask.recurrenceRule.interval,
+        daysOfWeek: newTask.recurrenceRule.daysOfWeek,
+        endDate: newTask.recurrenceRule.endDate,
+        endOccurrences: newTask.recurrenceRule.endOccurrences,
+      } : undefined,
+      recurrenceId: newTask.recurring ? `rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined,
     };
     
     try {
-      const updatedSchedule = await scheduleService.updateSchedule(
-        scheduleService.formatDateForAPI(selectedDate),
-        [...schedule, newBlock]
-      );
-      setSchedule(updatedSchedule.blocks);
-      setScheduleId(updatedSchedule._id);
+      let updatedSchedule;
+      
+      if (newTask.recurring) {
+        // For recurring tasks, use the recurring endpoint
+        const startDate = scheduleService.formatDateForAPI(selectedDate);
+        console.log('Creating recurring task with startDate:', startDate);
+        const recurringTask = {
+          block: newBlock,
+          startDate: startDate,
+        };
+        updatedSchedule = await scheduleService.createRecurringTask(recurringTask);
+        // Refresh the current day's schedule to show the new recurring task
+        const currentSchedule = await scheduleService.getSchedule(
+          scheduleService.formatDateForAPI(selectedDate)
+        );
+        setSchedule(currentSchedule.blocks || []);
+        setScheduleId(currentSchedule._id || '');
+      } else {
+        // For non-recurring tasks, use the regular update
+        updatedSchedule = await scheduleService.updateSchedule(
+          scheduleService.formatDateForAPI(selectedDate),
+          [...schedule, newBlock]
+        );
+        setSchedule(updatedSchedule.blocks);
+        setScheduleId(updatedSchedule._id);
+      }
+      
       setShowAddModal(false);
       setNewTask({
         title: '',
         category: 'personal',
         startTime: '09:00',
         endTime: '10:00',
+        recurring: false,
+        recurrenceRule: {
+          type: 'weekly',
+          interval: 1,
+          daysOfWeek: [],
+          endOccurrences: undefined,
+          endDate: undefined,
+        },
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to add task');
@@ -453,6 +516,84 @@ export const ScheduleScreenEnhanced: React.FC = () => {
                 />
               </View>
             </View>
+            
+            {/* Recurring Task Toggle */}
+            <View style={styles.recurringContainer}>
+              <Text style={styles.label}>Repeat</Text>
+              <TouchableOpacity
+                style={styles.recurringToggle}
+                onPress={() => setNewTask({ ...newTask, recurring: !newTask.recurring })}
+              >
+                <View style={[styles.toggleCircle, newTask.recurring && styles.toggleCircleActive]} />
+                <Text style={styles.recurringToggleText}>
+                  {newTask.recurring ? 'On' : 'Off'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Recurring Options */}
+            {newTask.recurring && (
+              <View style={styles.recurrenceOptions}>
+                <Text style={styles.label}>Frequency</Text>
+                <View style={styles.frequencyButtons}>
+                  {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                    <TouchableOpacity
+                      key={freq}
+                      style={[
+                        styles.frequencyButton,
+                        newTask.recurrenceRule.type === freq && styles.selectedFrequency,
+                      ]}
+                      onPress={() => setNewTask({
+                        ...newTask,
+                        recurrenceRule: { ...newTask.recurrenceRule, type: freq }
+                      })}
+                    >
+                      <Text style={[
+                        styles.frequencyButtonText,
+                        newTask.recurrenceRule.type === freq && styles.selectedFrequencyText,
+                      ]}>
+                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                {/* Weekly Days Selection */}
+                {newTask.recurrenceRule.type === 'weekly' && (
+                  <View style={styles.daysContainer}>
+                    <Text style={styles.label}>Days of Week</Text>
+                    <View style={styles.daysButtons}>
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={[
+                            styles.dayButton,
+                            newTask.recurrenceRule.daysOfWeek?.includes(index) && styles.selectedDay,
+                          ]}
+                          onPress={() => {
+                            const days = newTask.recurrenceRule.daysOfWeek || [];
+                            const updatedDays = days.includes(index)
+                              ? days.filter(d => d !== index)
+                              : [...days, index];
+                            setNewTask({
+                              ...newTask,
+                              recurrenceRule: { ...newTask.recurrenceRule, daysOfWeek: updatedDays }
+                            });
+                          }}
+                        >
+                          <Text style={[
+                            styles.dayButtonText,
+                            newTask.recurrenceRule.daysOfWeek?.includes(index) && styles.selectedDayText,
+                          ]}>
+                            {day}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
             
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -743,5 +884,95 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  recurringContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  recurringToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  toggleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#9ca3af',
+    marginRight: 8,
+  },
+  toggleCircleActive: {
+    backgroundColor: '#4F46E5',
+  },
+  recurringToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  recurrenceOptions: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  frequencyButtons: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  frequencyButton: {
+    flex: 1,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  selectedFrequency: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  frequencyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#4b5563',
+  },
+  selectedFrequencyText: {
+    color: '#fff',
+  },
+  daysContainer: {
+    marginBottom: 16,
+  },
+  daysButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedDay: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  dayButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  selectedDayText: {
+    color: '#fff',
   },
 });

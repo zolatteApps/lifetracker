@@ -224,12 +224,19 @@ router.post('/recurring', authMiddleware, async (req, res) => {
   try {
     const { block, startDate, daysAhead = 90 } = req.body;
     
+    console.log('Received recurring task request:', { block, startDate, daysAhead });
+    
     if (!block || !startDate) {
       return res.status(400).json({ error: 'Block and startDate are required' });
     }
     
     if (!block.recurring || !block.recurrenceRule) {
       return res.status(400).json({ error: 'Block must have recurring flag and recurrenceRule' });
+    }
+    
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
     }
     
     // Generate recurring instances

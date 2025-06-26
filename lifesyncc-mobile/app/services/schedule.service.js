@@ -106,6 +106,19 @@ class ScheduleService {
     }
   }
 
+  async createRecurringTask(task) {
+    try {
+      const response = await apiService.request('/api/schedule/recurring', {
+        method: 'POST',
+        body: JSON.stringify(task),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error creating recurring task:', error);
+      throw error;
+    }
+  }
+
   formatDateForAPI(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
