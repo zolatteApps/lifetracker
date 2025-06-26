@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
+/backend/node_modules
 
 # testing
 /coverage
@@ -24,3 +25,8 @@ yarn-error.log*
 backend/.env
 .vercel
 .env*.local
+
+lifesyncc-mobile/app/config/environment.js
+imgss/
+lifesyncc-mobile/app/screens/main/ScheduleScreen.tsx.backup
+lifesyncc-mobile/app/screens/main/TestScreen.tsx
