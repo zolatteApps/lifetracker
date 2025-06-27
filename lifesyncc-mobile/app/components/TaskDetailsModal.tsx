@@ -117,8 +117,10 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     
     // If this is a recurring task and user hasn't chosen yet, show dialog
     if (isActuallyRecurring && !editOccurrenceChoice) {
-      console.log('💾 DEBUG: Showing occurrence dialog for edit');
+      console.log('💾 DEBUG: Should show occurrence dialog!');
+      console.log('💾 DEBUG: Setting showOccurrenceDialog to true');
       setShowOccurrenceDialog(true);
+      console.log('💾 DEBUG: showOccurrenceDialog state will be:', true);
       return;
     }
 
@@ -151,8 +153,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     
     // If this is a recurring task, show occurrence choice dialog
     if (isActuallyRecurring) {
-      console.log('🗑️ DEBUG: Showing delete occurrence dialog');
+      console.log('🗑️ DEBUG: Should show delete occurrence dialog!');
+      console.log('🗑️ DEBUG: Setting showDeleteOccurrenceDialog to true');
       setShowDeleteOccurrenceDialog(true);
+      console.log('🗑️ DEBUG: showDeleteOccurrenceDialog state will be:', true);
+      console.log('🗑️ DEBUG: Current state of showDeleteOccurrenceDialog before set:', showDeleteOccurrenceDialog);
     } else {
       console.log('🗑️ DEBUG: Showing regular delete dialog');
       // For non-recurring tasks, show simple confirmation
@@ -235,6 +240,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   };
 
   if (!task || !editedTask) return null;
+
+  console.log('🎯 DEBUG: Component render - showOccurrenceDialog:', showOccurrenceDialog);
+  console.log('🎯 DEBUG: Component render - showDeleteOccurrenceDialog:', showDeleteOccurrenceDialog);
 
   return (
     <Modal
@@ -637,8 +645,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             visible={showDeleteOccurrenceDialog}
             transparent={true}
             animationType="fade"
-            onRequestClose={() => setShowDeleteOccurrenceDialog(false)}
+            onRequestClose={() => {
+              console.log('🗑️ DEBUG: Delete dialog onRequestClose');
+              setShowDeleteOccurrenceDialog(false);
+            }}
           >
+            {console.log('🚨 DEBUG: DELETE DIALOG IS RENDERING!')}
             <View style={styles.dialogOverlay}>
               <View style={styles.dialogContainer}>
                 <Text style={styles.dialogTitle}>Delete Recurring Task</Text>
@@ -949,10 +961,15 @@ const styles = StyleSheet.create({
   },
   dialogOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',  // Made darker to be more visible
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   dialogContainer: {
     backgroundColor: '#fff',
