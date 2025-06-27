@@ -114,7 +114,14 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       endDate: undefined as Date | undefined,
     },
   });
-  const [recurrenceEndType, setRecurrenceEndType] = useState<'never' | 'date' | 'occurrences'>('never');
+  const [recurrenceEndType, setRecurrenceEndType] = useState<'date' | 'occurrences' | 'duration'>('duration');
+  const [recurrenceDuration, setRecurrenceDuration] = useState<1 | 3 | 6 | 12>(3); // months
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [endDatePickerValue, setEndDatePickerValue] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 3);
+    return date;
+  });
 
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = { 
@@ -249,13 +256,30 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       return;
     }
     
-    // Validate recurring task settings
+    // Process end date based on selected type
+    let endDate: Date | undefined;
+    let endOccurrences: number | undefined;
+    
     if (newTask.recurring) {
       console.log('🆕 ADD TASK: This is a recurring task');
       if (newTask.recurrenceRule.type === 'weekly' && 
           (!newTask.recurrenceRule.daysOfWeek || newTask.recurrenceRule.daysOfWeek.length === 0)) {
         Alert.alert('Error', 'Please select at least one day of the week for weekly recurrence');
         return;
+      }
+      
+      // Determine end date or occurrences based on selection
+      switch (recurrenceEndType) {
+        case 'date':
+          endDate = endDatePickerValue;
+          break;
+        case 'occurrences':
+          endOccurrences = newTask.recurrenceRule.endOccurrences || 30;
+          break;
+        case 'duration':
+          endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + recurrenceDuration);
+          break;
       }
     }
     
@@ -271,8 +295,8 @@ export const ScheduleScreenEnhanced: React.FC = () => {
         type: newTask.recurrenceRule.type,
         interval: newTask.recurrenceRule.interval,
         daysOfWeek: newTask.recurrenceRule.daysOfWeek,
-        endDate: newTask.recurrenceRule.endDate,
-        endOccurrences: newTask.recurrenceRule.endOccurrences,
+        endDate: endDate,
+        endOccurrences: endOccurrences,
       } : undefined,
       recurrenceId: newTask.recurring ? `rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined,
     };
@@ -348,6 +372,13 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           endOccurrences: undefined,
           endDate: undefined,
         },
+      });
+      setRecurrenceEndType('duration');
+      setRecurrenceDuration(3);
+      setEndDatePickerValue(() => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 3);
+        return date;
       });
     } catch (error) {
       console.error('Error adding task:', error);
@@ -830,6 +861,115 @@ export const ScheduleScreenEnhanced: React.FC = () => {
                     </View>
                   </View>
                 )}
+                
+                {/* End Task Options */}
+                <View style={styles.endTaskContainer}>
+                  <Text style={styles.label}>End Task</Text>
+                  
+                  {/* Option buttons */}
+                  <View style={styles.endTypeButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.endTypeButton,
+                        recurrenceEndType === 'date' && styles.selectedEndType,
+                      ]}
+                      onPress={() => setRecurrenceEndType('date')}
+                    >
+                      <Text style={[
+                        styles.endTypeButtonText,
+                        recurrenceEndType === 'date' && styles.selectedEndTypeText,
+                      ]}>
+                        On date
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.endTypeButton,
+                        recurrenceEndType === 'occurrences' && styles.selectedEndType,
+                      ]}
+                      onPress={() => setRecurrenceEndType('occurrences')}
+                    >
+                      <Text style={[
+                        styles.endTypeButtonText,
+                        recurrenceEndType === 'occurrences' && styles.selectedEndTypeText,
+                      ]}>
+                        After occurrences
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.endTypeButton,
+                        recurrenceEndType === 'duration' && styles.selectedEndType,
+                      ]}
+                      onPress={() => setRecurrenceEndType('duration')}
+                    >
+                      <Text style={[
+                        styles.endTypeButtonText,
+                        recurrenceEndType === 'duration' && styles.selectedEndTypeText,
+                      ]}>
+                        For duration
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* End date picker */}
+                  {recurrenceEndType === 'date' && (
+                    <TouchableOpacity
+                      style={styles.datePickerButton}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <Text style={styles.datePickerButtonText}>
+                        {endDatePickerValue.toLocaleDateString()}
+                      </Text>
+                      <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* Occurrences input */}
+                  {recurrenceEndType === 'occurrences' && (
+                    <View style={styles.occurrencesInput}>
+                      <TextInput
+                        style={styles.occurrencesTextInput}
+                        placeholder="30"
+                        keyboardType="numeric"
+                        value={newTask.recurrenceRule.endOccurrences?.toString() || ''}
+                        onChangeText={(text) => {
+                          const num = parseInt(text) || undefined;
+                          setNewTask({
+                            ...newTask,
+                            recurrenceRule: { ...newTask.recurrenceRule, endOccurrences: num }
+                          });
+                        }}
+                      />
+                      <Text style={styles.occurrencesLabel}>occurrences</Text>
+                    </View>
+                  )}
+                  
+                  {/* Duration dropdown */}
+                  {recurrenceEndType === 'duration' && (
+                    <View style={styles.durationButtons}>
+                      {([1, 3, 6, 12] as const).map((months) => (
+                        <TouchableOpacity
+                          key={months}
+                          style={[
+                            styles.durationButton,
+                            recurrenceDuration === months && styles.selectedDuration,
+                          ]}
+                          onPress={() => setRecurrenceDuration(months as 1 | 3 | 6 | 12)}
+                        >
+                          <Text style={[
+                            styles.durationButtonText,
+                            recurrenceDuration === months && styles.selectedDurationText,
+                          ]}>
+                            {months} {months === 1 ? 'month' : 'months'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
               </View>
             )}
             
@@ -859,6 +999,26 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           onChange={(event, date) => {
             setShowDatePicker(Platform.OS === 'android');
             if (date) setSelectedDate(date);
+          }}
+        />
+      )}
+
+      {/* End Date Picker for Recurring Tasks */}
+      {showEndDatePicker && (
+        <DateTimePicker
+          value={endDatePickerValue}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()}
+          onChange={(event, date) => {
+            setShowEndDatePicker(Platform.OS === 'android');
+            if (date) {
+              setEndDatePickerValue(date);
+              setNewTask({
+                ...newTask,
+                recurrenceRule: { ...newTask.recurrenceRule, endDate: date }
+              });
+            }
           }}
         />
       )}
@@ -1253,6 +1413,98 @@ const styles = StyleSheet.create({
     color: '#4b5563',
   },
   selectedDayText: {
+    color: '#fff',
+  },
+  endTaskContainer: {
+    marginTop: 16,
+  },
+  endTypeButtons: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  endTypeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  selectedEndType: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  endTypeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#4b5563',
+  },
+  selectedEndTypeText: {
+    color: '#fff',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  datePickerButtonText: {
+    fontSize: 14,
+    color: '#4b5563',
+  },
+  occurrencesInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  occurrencesTextInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1f2937',
+    paddingVertical: 4,
+  },
+  occurrencesLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginLeft: 8,
+  },
+  durationButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  durationButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+    marginBottom: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  selectedDuration: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  durationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  selectedDurationText: {
     color: '#fff',
   },
 });
