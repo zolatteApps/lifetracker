@@ -25,6 +25,7 @@ import { ScheduleWeeklyView } from '../../components/ScheduleWeeklyView';
 import { ScheduleMonthlyView } from '../../components/ScheduleMonthlyView';
 import { TaskDetailsModal } from '../../components/TaskDetailsModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RecurringTaskTracker } from '../../utils/recurringTaskTracker';
 
 interface RecurrenceRule {
   type: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -141,13 +142,8 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     if (!initialLoadComplete) {
       const cached = await scheduleService.getCachedSchedule(dateStr);
       if (cached) {
-        // Apply the same fix to cached data
-        const fixedCachedBlocks = (cached.data.blocks || []).map((block: any) => {
-          if (block.recurrenceId && !block.recurring) {
-            return { ...block, recurring: true };
-          }
-          return block;
-        });
+        // Apply recurring info from tracker to cached data
+        const fixedCachedBlocks = await RecurringTaskTracker.applyRecurringInfo(cached.data.blocks || []);
         setSchedule(fixedCachedBlocks);
         setScheduleId(cached.data._id || '');
         setLoading(false);
@@ -174,33 +170,10 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           console.log(`  - repeat (alternative): ${(block as any).repeat}`);
         }
       });
-      // Workaround for backend issue: Force recurring flag based on recurrenceId
-      const fixedBlocks = await Promise.all((data.blocks || []).map(async (block: any) => {
-        console.log(`🔍 BACKEND CHECK: Task "${block.title}":`, {
-          recurring: block.recurring,
-          recurrenceId: block.recurrenceId,
-          hasRecurrenceRule: !!block.recurrenceRule
-        });
-        
-        // Check AsyncStorage for recurring info
-        const recurringKey = `recurring_task_${block.id}`;
-        try {
-          const storedInfo = await AsyncStorage.getItem(recurringKey);
-          if (storedInfo) {
-            const recurringData = JSON.parse(storedInfo);
-            console.log(`📦 FOUND STORED RECURRING INFO for "${block.title}":`, recurringData);
-            return { ...block, ...recurringData };
-          }
-        } catch (err) {
-          console.error('Error reading recurring info:', err);
-        }
-        
-        if (block.recurrenceId && !block.recurring) {
-          console.log(`🔧 FIXING: Task "${block.title}" has recurrenceId but recurring=false. Setting recurring=true`);
-          return { ...block, recurring: true };
-        }
-        return block;
-      }));
+      // Apply recurring info from our local tracker
+      console.log('🔄 Applying recurring info from tracker...');
+      const fixedBlocks = await RecurringTaskTracker.applyRecurringInfo(data.blocks || []);
+      console.log('✅ Applied recurring info to', fixedBlocks.filter(b => b.recurring).length, 'tasks');
       
       setSchedule(fixedBlocks);
       setScheduleId(data._id || '');
@@ -221,6 +194,16 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       fetchSchedule();
     }
   }, [selectedDate, activeView]);
+
+  // Debug function to check recurring tasks
+  useEffect(() => {
+    const checkRecurringTasks = async () => {
+      const tasks = await RecurringTaskTracker.getRecurringTasks();
+      console.log('📊 RECURRING TASKS IN TRACKER:', Object.keys(tasks).length, 'tasks');
+      console.log('📊 DETAILS:', JSON.stringify(tasks, null, 2));
+    };
+    checkRecurringTasks();
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -312,20 +295,17 @@ export const ScheduleScreenEnhanced: React.FC = () => {
         updatedSchedule = await scheduleService.createRecurringTask(recurringTaskPayload);
         console.log('🆕 ADD TASK: Response from createRecurringTask:', JSON.stringify(updatedSchedule, null, 2));
         
-        // Store recurring task info locally since backend doesn't return it
-        if (updatedSchedule && updatedSchedule.schedules) {
-          const createdTasks = updatedSchedule.schedules.flatMap((s: any) => s.blocks || []);
-          console.log('🆕 ADD TASK: Created tasks from response:', createdTasks);
-          
-          // Store the recurring info for these tasks
-          createdTasks.forEach((task: any) => {
-            if (task.title === newBlock.title) {
-              console.log(`📌 STORING: Task "${task.title}" is recurring with recurrenceId: ${newBlock.recurrenceId}`);
-              // In a real app, you'd store this in AsyncStorage or context
-              // For now, we'll just log it
-            }
-          });
-        }
+        // Register this as a recurring task in our local tracker
+        await RecurringTaskTracker.registerRecurringTask({
+          taskId: newBlock.id,
+          title: newBlock.title,
+          recurrenceId: newBlock.recurrenceId!,
+          recurrenceRule: newBlock.recurrenceRule!,
+          startTime: newBlock.startTime,
+          endTime: newBlock.endTime,
+          category: newBlock.category
+        });
+        console.log('✅ Registered recurring task in local tracker');
         
         // Refresh the current day's schedule to show the new recurring task
         console.log('🆕 ADD TASK: Refreshing schedule...');
@@ -334,40 +314,9 @@ export const ScheduleScreenEnhanced: React.FC = () => {
         );
         console.log('🆕 ADD TASK: Refreshed schedule blocks:', JSON.stringify(currentSchedule.blocks, null, 2));
         
-        // Apply the fix for backend issue
-        // Since backend strips recurring info, mark tasks as recurring based on what we just created
-        const fixedBlocks = (currentSchedule.blocks || []).map((block: any) => {
-          // Check if this task matches what we just created
-          if (block.title === newBlock.title && 
-              block.startTime === newBlock.startTime && 
-              block.endTime === newBlock.endTime &&
-              block.category === newBlock.category) {
-            console.log(`🔧 FORCING RECURRING: Task "${block.title}" was just created as recurring. Setting recurring=true`);
-            
-            // Store recurring task info in AsyncStorage as backup
-            const recurringKey = `recurring_task_${block.id}`;
-            AsyncStorage.setItem(recurringKey, JSON.stringify({
-              recurring: true,
-              recurrenceId: newBlock.recurrenceId,
-              recurrenceRule: newBlock.recurrenceRule
-            })).catch(err => console.error('Error storing recurring info:', err));
-            
-            return { 
-              ...block, 
-              recurring: true,
-              recurrenceId: newBlock.recurrenceId,
-              recurrenceRule: newBlock.recurrenceRule
-            };
-          }
-          
-          // Also check if this task has a recurrenceId but missing recurring flag
-          if (block.recurrenceId && !block.recurring) {
-            console.log(`🔧 FIXING in ADD: Task "${block.title}" has recurrenceId but recurring=false. Setting recurring=true`);
-            return { ...block, recurring: true };
-          }
-          
-          return block;
-        });
+        // Apply recurring info from tracker
+        const fixedBlocks = await RecurringTaskTracker.applyRecurringInfo(currentSchedule.blocks || []);
+        console.log('✅ Applied recurring info after create');
         
         setSchedule(fixedBlocks);
         setScheduleId(currentSchedule._id || '');
@@ -493,12 +442,18 @@ export const ScheduleScreenEnhanced: React.FC = () => {
         if (occurrenceChoice === 'all') {
           // Delete all future occurrences
           console.log('Deleting all future occurrences of recurring task');
-          // You might need a specific API endpoint for this
           const updatedSchedule = await scheduleService.deleteScheduleBlock(
             scheduleId,
             blockId,
             { deleteAllOccurrences: true }
           );
+          
+          // Remove from our local tracker as well
+          if (task.recurrenceId) {
+            await RecurringTaskTracker.removeRecurringTask(task.recurrenceId);
+            console.log('✅ Removed recurring task from tracker');
+          }
+          
           setSchedule(updatedSchedule.blocks);
         } else {
           // Delete only this occurrence
