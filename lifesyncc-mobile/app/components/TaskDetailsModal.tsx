@@ -75,6 +75,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showOccurrenceDialog, setShowOccurrenceDialog] = useState(false);
   const [deleteOccurrenceChoice, setDeleteOccurrenceChoice] = useState<'single' | 'all' | null>(null);
   const [showDeleteOccurrenceDialog, setShowDeleteOccurrenceDialog] = useState(false);
+  const [recurrenceEndType, setRecurrenceEndType] = useState<'date' | 'occurrences' | 'duration'>('duration');
+  const [recurrenceDuration, setRecurrenceDuration] = useState<1 | 3 | 6 | 12>(3);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [endDatePickerValue, setEndDatePickerValue] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 3);
+    return date;
+  });
 
   useEffect(() => {
     if (task && visible) {
@@ -94,6 +102,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setIsEditMode(false);
       setEditOccurrenceChoice(null);
       setShowOccurrenceDialog(false);
+      
+      // Set end type based on existing recurrence rule
+      if (task.recurrenceRule?.endDate) {
+        setRecurrenceEndType('date');
+        setEndDatePickerValue(new Date(task.recurrenceRule.endDate));
+      } else if (task.recurrenceRule?.endOccurrences) {
+        setRecurrenceEndType('occurrences');
+      } else {
+        setRecurrenceEndType('duration');
+        setRecurrenceDuration(3);
+      }
     }
   }, [task, visible]);
 
@@ -116,9 +135,36 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     setIsLoading(true);
     try {
+      // Process end date based on selection
+      let finalEditedTask = { ...editedTask };
+      
+      if (editedTask.recurring && editedTask.recurrenceRule) {
+        // Clear both end conditions first
+        finalEditedTask.recurrenceRule = {
+          ...editedTask.recurrenceRule,
+          endDate: undefined,
+          endOccurrences: undefined
+        };
+        
+        // Set the selected end condition
+        switch (recurrenceEndType) {
+          case 'date':
+            finalEditedTask.recurrenceRule.endDate = endDatePickerValue;
+            break;
+          case 'occurrences':
+            finalEditedTask.recurrenceRule.endOccurrences = editedTask.recurrenceRule.endOccurrences || 30;
+            break;
+          case 'duration':
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + recurrenceDuration);
+            finalEditedTask.recurrenceRule.endDate = endDate;
+            break;
+        }
+      }
+      
       // Include edit occurrence choice in the update
       const updateData = {
-        ...editedTask,
+        ...finalEditedTask,
         editOccurrenceChoice: editOccurrenceChoice || 'single'
       };
       await onUpdate(updateData);
@@ -427,6 +473,118 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         </View>
                       </View>
                     )}
+                    
+                    {/* End Task Options */}
+                    <View style={styles.section}>
+                      <Text style={styles.label}>End Task</Text>
+                      
+                      {/* Option buttons */}
+                      <View style={styles.endTypeButtons}>
+                        <TouchableOpacity
+                          style={[
+                            styles.endTypeButton,
+                            recurrenceEndType === 'date' && styles.selectedEndType,
+                          ]}
+                          onPress={() => setRecurrenceEndType('date')}
+                        >
+                          <Text style={[
+                            styles.endTypeButtonText,
+                            recurrenceEndType === 'date' && styles.selectedEndTypeText,
+                          ]}>
+                            On date
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={[
+                            styles.endTypeButton,
+                            recurrenceEndType === 'occurrences' && styles.selectedEndType,
+                          ]}
+                          onPress={() => setRecurrenceEndType('occurrences')}
+                        >
+                          <Text style={[
+                            styles.endTypeButtonText,
+                            recurrenceEndType === 'occurrences' && styles.selectedEndTypeText,
+                          ]}>
+                            After occurrences
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={[
+                            styles.endTypeButton,
+                            recurrenceEndType === 'duration' && styles.selectedEndType,
+                          ]}
+                          onPress={() => setRecurrenceEndType('duration')}
+                        >
+                          <Text style={[
+                            styles.endTypeButtonText,
+                            recurrenceEndType === 'duration' && styles.selectedEndTypeText,
+                          ]}>
+                            For duration
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      
+                      {/* End date picker */}
+                      {recurrenceEndType === 'date' && (
+                        <TouchableOpacity
+                          style={styles.datePickerButton}
+                          onPress={() => setShowEndDatePicker(true)}
+                        >
+                          <Text style={styles.datePickerButtonText}>
+                            {endDatePickerValue.toLocaleDateString()}
+                          </Text>
+                          <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                      )}
+                      
+                      {/* Occurrences input */}
+                      {recurrenceEndType === 'occurrences' && (
+                        <View style={styles.occurrencesInput}>
+                          <TextInput
+                            style={styles.occurrencesTextInput}
+                            placeholder="30"
+                            keyboardType="numeric"
+                            value={editedTask.recurrenceRule?.endOccurrences?.toString() || ''}
+                            onChangeText={(text) => {
+                              const num = parseInt(text) || undefined;
+                              setEditedTask({
+                                ...editedTask,
+                                recurrenceRule: {
+                                  ...editedTask.recurrenceRule!,
+                                  endOccurrences: num
+                                }
+                              });
+                            }}
+                          />
+                          <Text style={styles.occurrencesLabel}>occurrences</Text>
+                        </View>
+                      )}
+                      
+                      {/* Duration dropdown */}
+                      {recurrenceEndType === 'duration' && (
+                        <View style={styles.durationButtons}>
+                          {([1, 3, 6, 12] as const).map((months) => (
+                            <TouchableOpacity
+                              key={months}
+                              style={[
+                                styles.durationButton,
+                                recurrenceDuration === months && styles.selectedDuration,
+                              ]}
+                              onPress={() => setRecurrenceDuration(months as 1 | 3 | 6 | 12)}
+                            >
+                              <Text style={[
+                                styles.durationButtonText,
+                                recurrenceDuration === months && styles.selectedDurationText,
+                              ]}>
+                                {months} {months === 1 ? 'month' : 'months'}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
                   </>
                 )}
               </>
@@ -679,6 +837,29 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </View>
             </View>
           </Modal>
+        )}
+        
+        {/* End Date Picker for Recurring Tasks */}
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={endDatePickerValue}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={new Date()}
+            onChange={(event, date) => {
+              setShowEndDatePicker(Platform.OS === 'android');
+              if (date) {
+                setEndDatePickerValue(date);
+                setEditedTask({
+                  ...editedTask,
+                  recurrenceRule: { 
+                    ...editedTask.recurrenceRule!, 
+                    endDate: date 
+                  }
+                });
+              }
+            }}
+          />
         )}
       </KeyboardAvoidingView>
     </Modal>
@@ -1007,5 +1188,98 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#6B7280',
+  },
+  endTaskContainer: {
+    marginTop: 16,
+  },
+  endTypeButtons: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 8,
+  },
+  endTypeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  selectedEndType: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  endTypeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#6B7280',
+  },
+  selectedEndTypeText: {
+    color: '#fff',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  datePickerButtonText: {
+    fontSize: 14,
+    color: '#4B5563',
+  },
+  occurrencesInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  occurrencesTextInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    paddingVertical: 4,
+  },
+  occurrencesLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  durationButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 8,
+  },
+  durationButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  selectedDuration: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  durationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  selectedDurationText: {
+    color: '#fff',
   },
 });
