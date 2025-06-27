@@ -153,10 +153,21 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleModifySchedule = () => {
-    // Close the preview modal and return to the goal creation form
+    // Close the preview modal
     setShowSchedulePreview(false);
-    // Keep showCreateGoalModal as true so they can edit the form
-    // The goalDetails state is already preserved
+    
+    // Navigate to Goals screen with prefill data
+    navigation.navigate('Goals', {
+      openAddModal: true,
+      prefillData: {
+        ...goalDetails,
+        proposedSchedule: goalDetails?.proposedSchedule
+      }
+    });
+    
+    // Clear the current state
+    setGoalDetails(null);
+    setGoalText('');
   };
 
   const handleCancelSchedule = () => {
