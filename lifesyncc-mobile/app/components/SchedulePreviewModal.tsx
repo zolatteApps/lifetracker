@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface ScheduleSession {
   activity: string;
@@ -26,15 +29,21 @@ interface SchedulePreviewModalProps {
     title: string;
     category: string;
     description: string;
+    type?: 'milestone' | 'numeric' | 'habit';
+    priority?: 'high' | 'medium' | 'low';
+    targetValue?: number;
+    unit?: string;
     proposedSchedule?: {
       summary: string;
       explanation: string;
       sessions: ScheduleSession[];
     };
+    isManualMode?: boolean;
   } | null;
   onAccept: () => void;
   onModify: () => void;
   onCancel: () => void;
+  onUpdate?: (updatedDetails: any) => void;
   loading?: boolean;
 }
 
@@ -52,14 +61,39 @@ const categoryColors: Record<string, string> = {
   social: '#3B82F6',
 };
 
+const categories = [
+  { key: 'physical', label: 'Physical' },
+  { key: 'mental', label: 'Mental' },
+  { key: 'financial', label: 'Financial' },
+  { key: 'social', label: 'Social' },
+];
+
 export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
   visible,
   goalDetails,
   onAccept,
   onModify,
   onCancel,
+  onUpdate,
   loading = false,
 }) => {
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedDetails, setEditedDetails] = useState<any>(null);
+  const [showTimePicker, setShowTimePicker] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (goalDetails && visible) {
+      setEditedDetails(JSON.parse(JSON.stringify(goalDetails)));
+      // Automatically open in edit mode for manual creation
+      if (goalDetails.isManualMode) {
+        setIsEditMode(true);
+      }
+    } else {
+      // Reset edit mode when modal is closed
+      setIsEditMode(false);
+    }
+  }, [goalDetails, visible]);
+
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);
@@ -85,13 +119,50 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     return 'Monthly';
   };
 
-  if (!goalDetails || !goalDetails.proposedSchedule) {
+  const handleSaveChanges = () => {
+    if (onUpdate) {
+      onUpdate(editedDetails);
+    }
+    setIsEditMode(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedDetails(JSON.parse(JSON.stringify(goalDetails)));
+    setIsEditMode(false);
+  };
+
+  const toggleDay = (sessionIndex: number, day: string) => {
+    const newDetails = { ...editedDetails };
+    const session = newDetails.proposedSchedule.sessions[sessionIndex];
+    
+    if (session.days.includes(day)) {
+      session.days = session.days.filter((d: string) => d !== day);
+    } else {
+      session.days.push(day);
+    }
+    
+    // Update daysPerWeek based on selected days
+    session.daysPerWeek = session.days.length;
+    
+    setEditedDetails(newDetails);
+  };
+
+  const updateSessionTime = (sessionIndex: number, date: Date) => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const newDetails = { ...editedDetails };
+    newDetails.proposedSchedule.sessions[sessionIndex].time = `${hours}:${minutes}`;
+    setEditedDetails(newDetails);
+    setShowTimePicker(null);
+  };
+
+  if (!goalDetails || !goalDetails.proposedSchedule || !editedDetails) {
     return null;
   }
 
-  const { proposedSchedule } = goalDetails;
-  const categoryColor = categoryColors[goalDetails.category] || '#4F46E5';
-  const categoryIcon = categoryIcons[goalDetails.category] || 'flag';
+  const { proposedSchedule } = editedDetails;
+  const categoryColor = categoryColors[editedDetails.category] || '#4F46E5';
+  const categoryIcon = categoryIcons[editedDetails.category] || 'flag';
 
   return (
     <Modal
@@ -103,7 +174,9 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       <View style={styles.container}>
         <View style={styles.modal}>
           <View style={styles.header}>
-            <Text style={styles.title}>Goal & Schedule Preview</Text>
+            <Text style={styles.title}>
+              {isEditMode ? 'Edit Goal & Schedule' : 'Goal & Schedule Preview'}
+            </Text>
             <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
@@ -117,13 +190,48 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                   <Ionicons name={categoryIcon as any} size={24} color={categoryColor} />
                 </View>
                 <View style={styles.goalInfo}>
-                  <Text style={styles.goalTitle}>{goalDetails.title}</Text>
-                  <Text style={styles.goalCategory}>
-                    {goalDetails.category.charAt(0).toUpperCase() + goalDetails.category.slice(1)} Goal
-                  </Text>
+                  {isEditMode ? (
+                    <>
+                      <TextInput
+                        style={styles.goalTitleInput}
+                        value={editedDetails.title}
+                        onChangeText={(text) => setEditedDetails({ ...editedDetails, title: text })}
+                        placeholder="Goal title"
+                      />
+                      <View style={styles.categoryPickerContainer}>
+                        <Picker
+                          selectedValue={editedDetails.category}
+                          onValueChange={(value) => setEditedDetails({ ...editedDetails, category: value })}
+                          style={styles.categoryPicker}
+                        >
+                          {categories.map((cat) => (
+                            <Picker.Item key={cat.key} label={cat.label} value={cat.key} />
+                          ))}
+                        </Picker>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.goalTitle}>{editedDetails.title}</Text>
+                      <Text style={styles.goalCategory}>
+                        {editedDetails.category.charAt(0).toUpperCase() + editedDetails.category.slice(1)} Goal
+                      </Text>
+                    </>
+                  )}
                 </View>
               </View>
-              <Text style={styles.goalDescription}>{goalDetails.description}</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={styles.goalDescriptionInput}
+                  value={editedDetails.description}
+                  onChangeText={(text) => setEditedDetails({ ...editedDetails, description: text })}
+                  placeholder="Goal description"
+                  multiline
+                  numberOfLines={3}
+                />
+              ) : (
+                <Text style={styles.goalDescription}>{editedDetails.description}</Text>
+              )}
             </View>
 
             {/* Proposed Schedule */}
@@ -131,31 +239,90 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
               <Text style={styles.sectionTitle}>Proposed Schedule</Text>
               <Text style={styles.scheduleSummary}>{proposedSchedule.summary}</Text>
 
-              {proposedSchedule.sessions.map((session, index) => (
+              {proposedSchedule.sessions.map((session: ScheduleSession, index: number) => (
                 <View key={index} style={styles.sessionCard}>
                   <View style={styles.sessionHeader}>
                     <Ionicons name="calendar-outline" size={20} color={categoryColor} />
-                    <Text style={styles.sessionActivity}>{session.activity}</Text>
+                    {isEditMode ? (
+                      <TextInput
+                        style={styles.sessionActivityInput}
+                        value={session.activity}
+                        onChangeText={(text) => {
+                          const newDetails = { ...editedDetails };
+                          newDetails.proposedSchedule.sessions[index].activity = text;
+                          setEditedDetails(newDetails);
+                        }}
+                        placeholder="Activity name"
+                      />
+                    ) : (
+                      <Text style={styles.sessionActivity}>{session.activity}</Text>
+                    )}
                   </View>
                   
                   <View style={styles.sessionDetails}>
                     <View style={styles.detailRow}>
                       <Ionicons name="time-outline" size={16} color="#666" />
-                      <Text style={styles.detailText}>
-                        {formatTime(session.time)} • {formatDuration(session.duration)}
-                      </Text>
+                      {isEditMode ? (
+                        <View style={styles.timeEditContainer}>
+                          <TouchableOpacity
+                            style={styles.timeButton}
+                            onPress={() => setShowTimePicker(index)}
+                          >
+                            <Text style={styles.detailText}>
+                              {formatTime(session.time)}
+                            </Text>
+                          </TouchableOpacity>
+                          <Text style={styles.detailText}> • </Text>
+                          <TextInput
+                            style={styles.durationInput}
+                            value={session.duration.toString()}
+                            onChangeText={(text) => {
+                              const newDetails = { ...editedDetails };
+                              newDetails.proposedSchedule.sessions[index].duration = parseInt(text) || 0;
+                              setEditedDetails(newDetails);
+                            }}
+                            keyboardType="numeric"
+                            placeholder="Duration"
+                          />
+                          <Text style={styles.detailText}> min</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.detailText}>
+                          {formatTime(session.time)} • {formatDuration(session.duration)}
+                        </Text>
+                      )}
                     </View>
                     
                     <View style={styles.detailRow}>
                       <Ionicons name="repeat-outline" size={16} color="#666" />
-                      <Text style={styles.detailText}>{formatFrequency(session)}</Text>
+                      {isEditMode ? (
+                        <View style={styles.frequencyEditContainer}>
+                          <Picker
+                            selectedValue={session.frequency}
+                            onValueChange={(value) => {
+                              const newDetails = { ...editedDetails };
+                              newDetails.proposedSchedule.sessions[index].frequency = value;
+                              setEditedDetails(newDetails);
+                            }}
+                            style={styles.frequencyPicker}
+                          >
+                            <Picker.Item label="Daily" value="daily" />
+                            <Picker.Item label="Weekly" value="weekly" />
+                            <Picker.Item label="Monthly" value="monthly" />
+                          </Picker>
+                        </View>
+                      ) : (
+                        <Text style={styles.detailText}>{formatFrequency(session)}</Text>
+                      )}
                     </View>
                     
                     {session.days.length < 7 && (
                       <View style={styles.daysContainer}>
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                          <View
+                          <TouchableOpacity
                             key={day}
+                            onPress={() => isEditMode && toggleDay(index, day)}
+                            disabled={!isEditMode}
                             style={[
                               styles.dayBadge,
                               session.days.includes(day) && styles.dayBadgeActive,
@@ -170,15 +337,32 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                             >
                               {day.charAt(0)}
                             </Text>
-                          </View>
+                          </TouchableOpacity>
                         ))}
                       </View>
                     )}
                     
                     <View style={styles.totalRow}>
-                      <Text style={styles.totalText}>
-                        Total: {session.totalOccurrences} sessions
-                      </Text>
+                      {isEditMode ? (
+                        <View style={styles.totalEditContainer}>
+                          <Text style={styles.totalText}>Total: </Text>
+                          <TextInput
+                            style={styles.totalInput}
+                            value={session.totalOccurrences.toString()}
+                            onChangeText={(text) => {
+                              const newDetails = { ...editedDetails };
+                              newDetails.proposedSchedule.sessions[index].totalOccurrences = parseInt(text) || 0;
+                              setEditedDetails(newDetails);
+                            }}
+                            keyboardType="numeric"
+                          />
+                          <Text style={styles.totalText}> sessions</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.totalText}>
+                          Total: {session.totalOccurrences} sessions
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -197,28 +381,72 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.modifyButton} onPress={onModify}>
-              <Ionicons name="create-outline" size={20} color="#4F46E5" />
-              <Text style={styles.modifyButtonText}>Modify</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.acceptButton, { backgroundColor: categoryColor }]}
-              onPress={onAccept}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.acceptButtonText}>Accept & Create</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {isEditMode ? (
+              <>
+                <TouchableOpacity style={styles.cancelEditButton} onPress={handleCancelEdit}>
+                  <Ionicons name="close-outline" size={20} color="#666" />
+                  <Text style={styles.cancelEditButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.saveButton, { backgroundColor: categoryColor }]}
+                  onPress={handleSaveChanges}
+                >
+                  <Ionicons name="checkmark" size={20} color="#fff" />
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity 
+                  style={styles.modifyButton} 
+                  onPress={() => setIsEditMode(true)}
+                >
+                  <Ionicons name="create-outline" size={20} color="#4F46E5" />
+                  <Text style={styles.modifyButtonText}>Modify</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.acceptButton, { backgroundColor: categoryColor }]}
+                  onPress={onAccept}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.acceptButtonText}>Accept & Create</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </View>
+
+      {/* Time Picker Modal */}
+      {showTimePicker !== null && (
+        <DateTimePicker
+          value={(() => {
+            const [hours, minutes] = editedDetails.proposedSchedule.sessions[showTimePicker].time.split(':');
+            const date = new Date();
+            date.setHours(parseInt(hours));
+            date.setMinutes(parseInt(minutes));
+            return date;
+          })()}
+          mode="time"
+          display="default"
+          onChange={(event, selectedDate) => {
+            if (event.type === 'set' && selectedDate) {
+              updateSessionTime(showTimePicker, selectedDate);
+            } else {
+              setShowTimePicker(null);
+            }
+          }}
+        />
+      )}
     </Modal>
   );
 };
@@ -285,14 +513,42 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 2,
   },
+  goalTitleInput: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
   goalCategory: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  categoryPickerContainer: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  categoryPicker: {
+    height: 50,
   },
   goalDescription: {
     fontSize: 14,
     color: '#4b5563',
     lineHeight: 20,
+  },
+  goalDescriptionInput: {
+    fontSize: 14,
+    color: '#4b5563',
+    lineHeight: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 8,
+    minHeight: 60,
   },
   scheduleSection: {
     marginBottom: 20,
@@ -325,6 +581,16 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginLeft: 8,
   },
+  sessionActivityInput: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1f2937',
+    marginLeft: 8,
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 4,
+  },
   sessionDetails: {
     marginLeft: 28,
   },
@@ -337,6 +603,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4b5563',
     marginLeft: 8,
+  },
+  timeEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  timeButton: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    borderStyle: 'dashed',
+  },
+  durationInput: {
+    width: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 2,
+    textAlign: 'center',
+  },
+  frequencyEditContainer: {
+    flex: 1,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  frequencyPicker: {
+    height: 50,
   },
   daysContainer: {
     flexDirection: 'row',
@@ -370,6 +664,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     fontStyle: 'italic',
+  },
+  totalEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  totalInput: {
+    width: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 2,
+    textAlign: 'center',
+    marginHorizontal: 4,
   },
   explanationCard: {
     backgroundColor: '#fef3c7',
@@ -425,6 +731,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   acceptButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 6,
+  },
+  cancelEditButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  cancelEditButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 6,
+  },
+  saveButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',

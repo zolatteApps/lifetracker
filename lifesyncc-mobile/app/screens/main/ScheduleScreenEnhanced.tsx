@@ -23,6 +23,7 @@ import { ScheduleSkeleton } from '../../components/ScheduleSkeleton';
 import { ScheduleViewSwitcher, ScheduleViewType } from '../../components/ScheduleViewSwitcher';
 import { ScheduleWeeklyView } from '../../components/ScheduleWeeklyView';
 import { ScheduleMonthlyView } from '../../components/ScheduleMonthlyView';
+import { TaskDetailsModal } from '../../components/TaskDetailsModal';
 
 interface RecurrenceRule {
   type: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -71,6 +72,8 @@ export const ScheduleScreenEnhanced: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showTaskDetailsModal, setShowTaskDetailsModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ScheduleBlock | null>(null);
   
   const swipeAnimation = useRef(new Animated.Value(0)).current;
   const panResponder = useRef(
@@ -286,31 +289,115 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     }
   };
 
-  const deleteTask = async (blockId: string) => {
-    Alert.alert(
-      'Delete Task',
-      'Are you sure you want to delete this task?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            if (!scheduleId) return;
-            
-            try {
-              const updatedSchedule = await scheduleService.deleteScheduleBlock(
-                scheduleId,
-                blockId
-              );
-              setSchedule(updatedSchedule.blocks);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete task');
+  const updateTask = async (updatedTask: ScheduleBlock & { editOccurrenceChoice?: 'single' | 'all' }) => {
+    if (!scheduleId) return;
+    
+    try {
+      // Check if this is a recurring task being edited
+      if (updatedTask.recurring && updatedTask.editOccurrenceChoice) {
+        if (updatedTask.editOccurrenceChoice === 'all') {
+          // Update all future occurrences
+          // This would typically involve calling a different API endpoint
+          console.log('Updating all future occurrences of recurring task');
+          
+          // For now, we'll update the recurrence rule
+          const updateData = {
+            title: updatedTask.title,
+            category: updatedTask.category,
+            startTime: updatedTask.startTime,
+            endTime: updatedTask.endTime,
+            recurring: updatedTask.recurring,
+            recurrenceRule: updatedTask.recurrenceRule,
+          };
+          
+          // You might need to call a specific API for updating recurring tasks
+          const updatedSchedule = await scheduleService.updateScheduleBlock(
+            scheduleId,
+            updatedTask.id,
+            updateData
+          );
+          setSchedule(updatedSchedule.blocks);
+        } else {
+          // Update only this occurrence
+          const updatedSchedule = await scheduleService.updateScheduleBlock(
+            scheduleId,
+            updatedTask.id,
+            {
+              title: updatedTask.title,
+              category: updatedTask.category,
+              startTime: updatedTask.startTime,
+              endTime: updatedTask.endTime,
+              // Mark this as an exception to the recurrence
+              isException: true,
             }
-          },
-        },
-      ]
-    );
+          );
+          setSchedule(updatedSchedule.blocks);
+        }
+      } else {
+        // Regular task update (non-recurring or converting to recurring)
+        const updatedSchedule = await scheduleService.updateScheduleBlock(
+          scheduleId,
+          updatedTask.id,
+          {
+            title: updatedTask.title,
+            category: updatedTask.category,
+            startTime: updatedTask.startTime,
+            endTime: updatedTask.endTime,
+            recurring: updatedTask.recurring,
+            recurrenceRule: updatedTask.recurrenceRule,
+          }
+        );
+        setSchedule(updatedSchedule.blocks);
+      }
+      
+      setShowTaskDetailsModal(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update task');
+      throw error;
+    }
+  };
+
+  const deleteTask = async (blockId: string, occurrenceChoice?: 'single' | 'all') => {
+    // This function is now called from TaskDetailsModal with occurrence choice for recurring tasks
+    if (!scheduleId) return;
+    
+    try {
+      // Find the task to check if it's recurring
+      const task = schedule.find(t => t.id === blockId);
+      
+      if (task?.recurring && occurrenceChoice) {
+        // Handle recurring task deletion based on choice
+        if (occurrenceChoice === 'all') {
+          // Delete all future occurrences
+          console.log('Deleting all future occurrences of recurring task');
+          // You might need a specific API endpoint for this
+          const updatedSchedule = await scheduleService.deleteScheduleBlock(
+            scheduleId,
+            blockId,
+            { deleteAllOccurrences: true }
+          );
+          setSchedule(updatedSchedule.blocks);
+        } else {
+          // Delete only this occurrence
+          const updatedSchedule = await scheduleService.deleteScheduleBlock(
+            scheduleId,
+            blockId,
+            { deleteThisOccurrenceOnly: true }
+          );
+          setSchedule(updatedSchedule.blocks);
+        }
+      } else {
+        // Regular task deletion
+        const updatedSchedule = await scheduleService.deleteScheduleBlock(
+          scheduleId,
+          blockId
+        );
+        setSchedule(updatedSchedule.blocks);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete task');
+      throw error;
+    }
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -382,42 +469,60 @@ export const ScheduleScreenEnhanced: React.FC = () => {
               </View>
             ) : (
               schedule.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.scheduleItem,
-                    item.completed && styles.completedItem,
-                  ]}
-                  onPress={() => toggleTaskCompletion(item.id)}
-                  onLongPress={() => deleteTask(item.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.timeContainer}>
-                    <Text style={[styles.time, item.completed && styles.completedText]}>
-                      {item.startTime}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.taskContainer}>
-                    <View
-                      style={[
-                        styles.categoryIndicator,
-                        { backgroundColor: categoryColors[item.category] },
-                      ]}
-                    />
-                    <View style={styles.taskDetails}>
-                      <Text style={[styles.taskTitle, item.completed && styles.completedText]}>
-                        {item.title}
+                <View key={item.id} style={styles.scheduleItemWrapper}>
+                  <TouchableOpacity
+                    style={[
+                      styles.scheduleItem,
+                      item.completed && styles.completedItem,
+                    ]}
+                    onPress={() => {
+                      setSelectedTask(item);
+                      setShowTaskDetailsModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.timeContainer}>
+                      <Text style={[styles.time, item.completed && styles.completedText]}>
+                        {item.startTime}
                       </Text>
-                      <Text style={[styles.taskCategory, item.completed && styles.completedText]}>
-                        {item.category}
+                      <Text style={[styles.timeSeparator, item.completed && styles.completedText]}>
+                        -
+                      </Text>
+                      <Text style={[styles.time, item.completed && styles.completedText]}>
+                        {item.endTime}
                       </Text>
                     </View>
-                    {item.completed && (
-                      <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                    )}
-                  </View>
-                </TouchableOpacity>
+                    
+                    <View style={styles.taskContainer}>
+                      <View
+                        style={[
+                          styles.categoryIndicator,
+                          { backgroundColor: categoryColors[item.category] },
+                        ]}
+                      />
+                      <View style={styles.taskDetails}>
+                        <Text style={[styles.taskTitle, item.completed && styles.completedText]}>
+                          {item.title}
+                        </Text>
+                        <Text style={[styles.taskCategory, item.completed && styles.completedText]}>
+                          {item.category}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.checkmarkButton}
+                    onPress={() => toggleTaskCompletion(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name={item.completed ? "checkmark-circle" : "ellipse-outline"} 
+                      size={24} 
+                      color={item.completed ? "#10B981" : "#D1D5DB"} 
+                    />
+                  </TouchableOpacity>
+                </View>
               ))
             )}
           </View>
@@ -650,6 +755,22 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           }}
         />
       )}
+
+      {/* Task Details Modal */}
+      <TaskDetailsModal
+        visible={showTaskDetailsModal}
+        task={selectedTask}
+        onClose={() => {
+          setShowTaskDetailsModal(false);
+          setSelectedTask(null);
+        }}
+        onUpdate={updateTask}
+        onDelete={deleteTask}
+        onToggleComplete={async (task) => {
+          await toggleTaskCompletion(task.id);
+          setShowTaskDetailsModal(false);
+        }}
+      />
     </View>
   );
 };
@@ -726,12 +847,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 80,
   },
+  scheduleItemWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   scheduleItem: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: 12,
     padding: 16,
+    flex: 1,
+    marginRight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  checkmarkButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -743,12 +883,19 @@ const styles = StyleSheet.create({
   },
   timeContainer: {
     marginRight: 16,
-    minWidth: 80,
+    minWidth: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   time: {
     fontSize: 14,
     fontWeight: '600',
     color: '#6b7280',
+  },
+  timeSeparator: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginHorizontal: 4,
   },
   taskContainer: {
     flex: 1,
