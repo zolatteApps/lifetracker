@@ -2,6 +2,45 @@ const connectDB = require('../lib/mongodb');
 const Schedule = require('../models/Schedule');
 const { verifyToken } = require('../lib/auth-middleware');
 
+// Helper function to check if a date is within a recurrence pattern
+function isDateInRecurrence(recurrenceRule, targetDate, startDate) {
+  if (!recurrenceRule) return false;
+  
+  const target = new Date(targetDate);
+  const start = new Date(startDate);
+  
+  // Check if target date is before start date
+  if (target < start) return false;
+  
+  // Check end conditions
+  if (recurrenceRule.endDate && target > new Date(recurrenceRule.endDate)) {
+    return false;
+  }
+  
+  const daysDiff = Math.floor((target - start) / (1000 * 60 * 60 * 24));
+  
+  switch (recurrenceRule.type) {
+    case 'daily':
+      return daysDiff % (recurrenceRule.interval || 1) === 0;
+      
+    case 'weekly':
+      if (daysDiff % (7 * (recurrenceRule.interval || 1)) !== 0) return false;
+      if (recurrenceRule.daysOfWeek && recurrenceRule.daysOfWeek.length > 0) {
+        return recurrenceRule.daysOfWeek.includes(target.getDay());
+      }
+      return true;
+      
+    case 'monthly':
+      const monthsDiff = (target.getFullYear() - start.getFullYear()) * 12 + 
+                        (target.getMonth() - start.getMonth());
+      return monthsDiff % (recurrenceRule.interval || 1) === 0 && 
+             target.getDate() === start.getDate();
+      
+    default:
+      return false;
+  }
+}
+
 async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -32,15 +71,50 @@ async function handler(req, res) {
     if (req.method === 'GET') {
       const schedule = await Schedule.findOne({ userId, date });
       
-      if (!schedule) {
-        return res.status(200).json({
-          userId,
-          date,
-          blocks: [],
-        });
-      }
+      // Get all schedules with recurring tasks for this user
+      const recurringSchedules = await Schedule.find({
+        userId,
+        'blocks.recurring': true
+      });
       
-      return res.status(200).json(schedule);
+      const blocks = schedule ? [...schedule.blocks] : [];
+      const addedRecurrenceIds = new Set();
+      
+      // Check each recurring task to see if it should appear on this date
+      recurringSchedules.forEach(recurringSchedule => {
+        recurringSchedule.blocks.forEach(block => {
+          if (block.recurring && block.recurrenceRule && !addedRecurrenceIds.has(block.recurrenceId)) {
+            const originalDate = block.originalDate || recurringSchedule.date;
+            
+            if (isDateInRecurrence(block.recurrenceRule, new Date(date), new Date(originalDate))) {
+              // Check if this specific instance already exists (might be modified)
+              const existingBlock = blocks.find(b => b.recurrenceId === block.recurrenceId);
+              
+              if (!existingBlock) {
+                // Add the recurring instance WITH all recurring properties preserved
+                blocks.push({
+                  ...block.toObject(),
+                  id: `${block.id}-${date}`,
+                  originalDate: new Date(date),
+                  completed: false,
+                  // Explicitly preserve recurring properties
+                  recurring: true,
+                  recurrenceId: block.recurrenceId,
+                  recurrenceRule: block.recurrenceRule
+                });
+                addedRecurrenceIds.add(block.recurrenceId);
+              }
+            }
+          }
+        });
+      });
+      
+      return res.status(200).json({
+        _id: schedule?._id,
+        userId,
+        date,
+        blocks: blocks.sort((a, b) => a.startTime.localeCompare(b.startTime))
+      });
     }
     
     return res.status(405).json({ error: 'Method not allowed' });

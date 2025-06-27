@@ -234,6 +234,9 @@ export const ScheduleScreenEnhanced: React.FC = () => {
   };
 
   const addTask = async () => {
+    console.log('🆕 ADD TASK: Starting to add task');
+    console.log('🆕 ADD TASK: newTask state:', JSON.stringify(newTask, null, 2));
+    
     if (!newTask.title.trim()) {
       Alert.alert('Error', 'Please enter a task title');
       return;
@@ -241,6 +244,7 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     
     // Validate recurring task settings
     if (newTask.recurring) {
+      console.log('🆕 ADD TASK: This is a recurring task');
       if (newTask.recurrenceRule.type === 'weekly' && 
           (!newTask.recurrenceRule.daysOfWeek || newTask.recurrenceRule.daysOfWeek.length === 0)) {
         Alert.alert('Error', 'Please select at least one day of the week for weekly recurrence');
@@ -266,6 +270,8 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       recurrenceId: newTask.recurring ? `rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined,
     };
     
+    console.log('🆕 ADD TASK: Created newBlock:', JSON.stringify(newBlock, null, 2));
+    
     try {
       let updatedSchedule;
       
@@ -282,13 +288,52 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           startDate: startDate,
         };
 
+        console.log('🆕 ADD TASK: Sending to createRecurringTask:', JSON.stringify(recurringTaskPayload, null, 2));
         updatedSchedule = await scheduleService.createRecurringTask(recurringTaskPayload);
+        console.log('🆕 ADD TASK: Response from createRecurringTask:', JSON.stringify(updatedSchedule, null, 2));
+        
+        // Store recurring task info locally since backend doesn't return it
+        if (updatedSchedule && updatedSchedule.schedules) {
+          const createdTasks = updatedSchedule.schedules.flatMap((s: any) => s.blocks || []);
+          console.log('🆕 ADD TASK: Created tasks from response:', createdTasks);
+          
+          // Store the recurring info for these tasks
+          createdTasks.forEach((task: any) => {
+            if (task.title === newBlock.title) {
+              console.log(`📌 STORING: Task "${task.title}" is recurring with recurrenceId: ${newBlock.recurrenceId}`);
+              // In a real app, you'd store this in AsyncStorage or context
+              // For now, we'll just log it
+            }
+          });
+        }
         
         // Refresh the current day's schedule to show the new recurring task
+        console.log('🆕 ADD TASK: Refreshing schedule...');
         const currentSchedule = await scheduleService.getSchedule(
           scheduleService.formatDateForAPI(selectedDate)
         );
-        setSchedule(currentSchedule.blocks || []);
+        console.log('🆕 ADD TASK: Refreshed schedule blocks:', JSON.stringify(currentSchedule.blocks, null, 2));
+        
+        // Apply the fix for backend issue
+        // Since backend strips recurring info, mark tasks as recurring based on what we just created
+        const fixedBlocks = (currentSchedule.blocks || []).map((block: any) => {
+          // Check if this task matches what we just created
+          if (block.title === newBlock.title && 
+              block.startTime === newBlock.startTime && 
+              block.endTime === newBlock.endTime &&
+              block.category === newBlock.category) {
+            console.log(`🔧 FORCING RECURRING: Task "${block.title}" was just created as recurring. Setting recurring=true`);
+            return { 
+              ...block, 
+              recurring: true,
+              recurrenceId: newBlock.recurrenceId,
+              recurrenceRule: newBlock.recurrenceRule
+            };
+          }
+          return block;
+        });
+        
+        setSchedule(fixedBlocks);
         setScheduleId(currentSchedule._id || '');
       } else {
         // For non-recurring tasks, use the regular update
