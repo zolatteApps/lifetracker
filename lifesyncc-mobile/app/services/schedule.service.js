@@ -80,11 +80,25 @@ class ScheduleService {
     }
   }
 
-  async deleteScheduleBlock(scheduleId, blockId) {
+  async deleteScheduleBlock(scheduleId, blockId, options = {}) {
     try {
+      console.log('Deleting schedule block with options:', options);
+      const payload = { 
+        scheduleId, 
+        blockId,
+        ...options 
+      };
+      
+      // Map frontend options to backend expectations
+      if (options.deleteAllOccurrences) {
+        payload.deleteSeries = true;
+      }
+      
+      console.log('DELETE request payload:', payload);
+      
       const response = await apiService.request('/api/schedule', {
         method: 'DELETE',
-        body: JSON.stringify({ scheduleId, blockId }),
+        body: JSON.stringify(payload),
       });
       return response;
     } catch (error) {

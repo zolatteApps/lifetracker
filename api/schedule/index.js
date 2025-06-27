@@ -75,7 +75,9 @@ async function handler(req, res) {
     }
     
     if (req.method === 'DELETE') {
-      const { scheduleId, blockId } = req.body;
+      const { scheduleId, blockId, deleteSeries = false, deleteAllOccurrences = false } = req.body;
+      
+      console.log('DELETE request:', { scheduleId, blockId, deleteSeries, deleteAllOccurrences });
       
       if (!scheduleId || !blockId) {
         return res.status(400).json({ error: 'scheduleId and blockId are required' });
@@ -87,10 +89,57 @@ async function handler(req, res) {
         return res.status(404).json({ error: 'Schedule not found' });
       }
       
-      schedule.blocks = schedule.blocks.filter(block => block.id !== blockId);
-      await schedule.save();
+      const blockToDelete = schedule.blocks.find(block => block.id === blockId);
       
-      return res.status(200).json(schedule);
+      if (!blockToDelete) {
+        return res.status(404).json({ error: 'Block not found' });
+      }
+      
+      // Handle recurring task series deletion
+      if ((deleteSeries || deleteAllOccurrences) && blockToDelete.recurring && blockToDelete.recurrenceId) {
+        console.log(`Deleting all occurrences of recurring task: ${blockToDelete.title} with recurrenceId: ${blockToDelete.recurrenceId}`);
+        
+        // Delete from current schedule
+        schedule.blocks = schedule.blocks.filter(block => block.id !== blockId);
+        await schedule.save();
+        
+        // Delete all future instances of this recurring task
+        const allSchedules = await Schedule.find({
+          userId,
+          'blocks.recurrenceId': blockToDelete.recurrenceId,
+          date: { $gte: schedule.date } // Only delete from current date onwards
+        });
+        
+        console.log(`Found ${allSchedules.length} schedules with this recurring task`);
+        
+        let deletedCount = 0;
+        
+        for (const sched of allSchedules) {
+          const originalLength = sched.blocks.length;
+          sched.blocks = sched.blocks.filter(b => b.recurrenceId !== blockToDelete.recurrenceId);
+          
+          if (sched.blocks.length < originalLength) {
+            await sched.save();
+            deletedCount++;
+          }
+        }
+        
+        console.log(`Deleted recurring task from ${deletedCount} schedules`);
+        
+        // Also remove from our recurring task tracker
+        // Note: This would need to be done on the client side
+        
+        return res.status(200).json({ 
+          ...schedule.toObject(),
+          message: `Deleted ${deletedCount} occurrences of recurring task`
+        });
+      } else {
+        // Delete single instance only
+        schedule.blocks = schedule.blocks.filter(block => block.id !== blockId);
+        await schedule.save();
+        
+        return res.status(200).json(schedule);
+      }
     }
     
     return res.status(405).json({ error: 'Method not allowed' });
