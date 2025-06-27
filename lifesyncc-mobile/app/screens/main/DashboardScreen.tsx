@@ -56,13 +56,14 @@ export const DashboardScreen: React.FC = () => {
     fetchGoals();
   };
 
-  const handleAddGoal = async () => {
+  const handleAutoCreate = async () => {
     if (!goalText.trim()) {
       Alert.alert('Error', 'Please enter a goal');
       return;
     }
-
+    
     setIsProcessing(true);
+    
     try {
       // First, get AI categorization
       const response = await fetch(`${goalService.API_URL}/api/goals/categorize`, {
@@ -91,6 +92,39 @@ export const DashboardScreen: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleManualCreate = () => {
+    if (!goalText.trim()) {
+      Alert.alert('Error', 'Please enter a goal');
+      return;
+    }
+    
+    // Create default goal structure
+    const defaultGoalDetails = {
+      title: goalText.trim(),
+      category: 'physical',
+      description: '',
+      type: 'milestone',
+      priority: 'medium',
+      proposedSchedule: {
+        summary: 'Custom schedule',
+        explanation: 'Create your own schedule',
+        sessions: [{
+          activity: goalText.trim(),
+          frequency: 'weekly',
+          daysPerWeek: 1,
+          time: '19:00',
+          duration: 60,
+          days: ['Mon'],
+          totalOccurrences: 4
+        }]
+      },
+      isManualMode: true
+    };
+
+    setGoalDetails(defaultGoalDetails);
+    setShowSchedulePreview(true);
   };
 
   const handleAcceptSchedule = async () => {
@@ -153,21 +187,12 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleModifySchedule = () => {
-    // Close the preview modal
-    setShowSchedulePreview(false);
-    
-    // Navigate to Goals screen with prefill data
-    navigation.navigate('Goals', {
-      openAddModal: true,
-      prefillData: {
-        ...goalDetails,
-        proposedSchedule: goalDetails?.proposedSchedule
-      }
-    });
-    
-    // Clear the current state
-    setGoalDetails(null);
-    setGoalText('');
+    // The SchedulePreviewModal now handles edit mode internally
+    // This function is no longer needed but kept for backward compatibility
+  };
+
+  const handleUpdateGoalDetails = (updatedDetails: any) => {
+    setGoalDetails(updatedDetails);
   };
 
   const handleCancelSchedule = () => {
@@ -319,17 +344,31 @@ export const DashboardScreen: React.FC = () => {
                 editable={!isProcessing}
               />
               
-              <TouchableOpacity
-                style={[styles.achieveButton, isProcessing && styles.achieveButtonDisabled]}
-                onPress={handleAddGoal}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.achieveButtonText}>Achieve Your Goal</Text>
-                )}
-              </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={[styles.autoCreateButton, isProcessing && styles.achieveButtonDisabled]}
+                  onPress={handleAutoCreate}
+                  disabled={isProcessing || !goalText.trim()}
+                >
+                  {isProcessing ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles" size={20} color="#fff" />
+                      <Text style={styles.autoCreateButtonText}>Auto Create</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.manualCreateButton, !goalText.trim() && styles.manualCreateButtonDisabled]}
+                  onPress={handleManualCreate}
+                  disabled={!goalText.trim()}
+                >
+                  <Ionicons name="create-outline" size={20} color="#7C3AED" />
+                  <Text style={styles.manualCreateButtonText}>Manual Create</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -342,6 +381,7 @@ export const DashboardScreen: React.FC = () => {
         onAccept={handleAcceptSchedule}
         onModify={handleModifySchedule}
         onCancel={handleCancelSchedule}
+        onUpdate={handleUpdateGoalDetails}
         loading={isCreatingGoal}
       />
     </KeyboardAvoidingView>
@@ -447,5 +487,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: 0.3,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  autoCreateButton: {
+    flex: 1,
+    backgroundColor: '#7C3AED',
+    borderRadius: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  autoCreateButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  manualCreateButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    borderWidth: 2,
+    borderColor: '#7C3AED',
+  },
+  manualCreateButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#7C3AED',
+  },
+  manualCreateButtonDisabled: {
+    borderColor: '#E5E7EB',
+    opacity: 0.5,
   },
 });
