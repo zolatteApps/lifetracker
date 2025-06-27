@@ -140,7 +140,14 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     if (!initialLoadComplete) {
       const cached = await scheduleService.getCachedSchedule(dateStr);
       if (cached) {
-        setSchedule(cached.data.blocks || []);
+        // Apply the same fix to cached data
+        const fixedCachedBlocks = (cached.data.blocks || []).map((block: any) => {
+          if (block.recurrenceId && !block.recurring) {
+            return { ...block, recurring: true };
+          }
+          return block;
+        });
+        setSchedule(fixedCachedBlocks);
         setScheduleId(cached.data._id || '');
         setLoading(false);
       }
@@ -166,7 +173,16 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           console.log(`  - repeat (alternative): ${(block as any).repeat}`);
         }
       });
-      setSchedule(data.blocks || []);
+      // Workaround for backend issue: Force recurring flag based on recurrenceId
+      const fixedBlocks = (data.blocks || []).map((block: any) => {
+        if (block.recurrenceId && !block.recurring) {
+          console.log(`🔧 FIXING: Task "${block.title}" has recurrenceId but recurring=false. Setting recurring=true`);
+          return { ...block, recurring: true };
+        }
+        return block;
+      });
+      
+      setSchedule(fixedBlocks);
       setScheduleId(data._id || '');
       setInitialLoadComplete(true);
     } catch (error) {
