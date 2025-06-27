@@ -24,6 +24,7 @@ import { ScheduleViewSwitcher, ScheduleViewType } from '../../components/Schedul
 import { ScheduleWeeklyView } from '../../components/ScheduleWeeklyView';
 import { ScheduleMonthlyView } from '../../components/ScheduleMonthlyView';
 import { TaskDetailsModal } from '../../components/TaskDetailsModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface RecurrenceRule {
   type: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -174,13 +175,32 @@ export const ScheduleScreenEnhanced: React.FC = () => {
         }
       });
       // Workaround for backend issue: Force recurring flag based on recurrenceId
-      const fixedBlocks = (data.blocks || []).map((block: any) => {
+      const fixedBlocks = await Promise.all((data.blocks || []).map(async (block: any) => {
+        console.log(`🔍 BACKEND CHECK: Task "${block.title}":`, {
+          recurring: block.recurring,
+          recurrenceId: block.recurrenceId,
+          hasRecurrenceRule: !!block.recurrenceRule
+        });
+        
+        // Check AsyncStorage for recurring info
+        const recurringKey = `recurring_task_${block.id}`;
+        try {
+          const storedInfo = await AsyncStorage.getItem(recurringKey);
+          if (storedInfo) {
+            const recurringData = JSON.parse(storedInfo);
+            console.log(`📦 FOUND STORED RECURRING INFO for "${block.title}":`, recurringData);
+            return { ...block, ...recurringData };
+          }
+        } catch (err) {
+          console.error('Error reading recurring info:', err);
+        }
+        
         if (block.recurrenceId && !block.recurring) {
           console.log(`🔧 FIXING: Task "${block.title}" has recurrenceId but recurring=false. Setting recurring=true`);
           return { ...block, recurring: true };
         }
         return block;
-      });
+      }));
       
       setSchedule(fixedBlocks);
       setScheduleId(data._id || '');
@@ -323,6 +343,15 @@ export const ScheduleScreenEnhanced: React.FC = () => {
               block.endTime === newBlock.endTime &&
               block.category === newBlock.category) {
             console.log(`🔧 FORCING RECURRING: Task "${block.title}" was just created as recurring. Setting recurring=true`);
+            
+            // Store recurring task info in AsyncStorage as backup
+            const recurringKey = `recurring_task_${block.id}`;
+            AsyncStorage.setItem(recurringKey, JSON.stringify({
+              recurring: true,
+              recurrenceId: newBlock.recurrenceId,
+              recurrenceRule: newBlock.recurrenceRule
+            })).catch(err => console.error('Error storing recurring info:', err));
+            
             return { 
               ...block, 
               recurring: true,
@@ -330,6 +359,13 @@ export const ScheduleScreenEnhanced: React.FC = () => {
               recurrenceRule: newBlock.recurrenceRule
             };
           }
+          
+          // Also check if this task has a recurrenceId but missing recurring flag
+          if (block.recurrenceId && !block.recurring) {
+            console.log(`🔧 FIXING in ADD: Task "${block.title}" has recurrenceId but recurring=false. Setting recurring=true`);
+            return { ...block, recurring: true };
+          }
+          
           return block;
         });
         

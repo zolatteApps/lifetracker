@@ -77,6 +77,8 @@ async function handler(req, res) {
         'blocks.recurring': true
       });
       
+      console.log(`Found ${recurringSchedules.length} schedules with recurring tasks for user ${userId}`);
+      
       const blocks = schedule ? [...schedule.blocks] : [];
       const addedRecurrenceIds = new Set();
       
@@ -84,23 +86,30 @@ async function handler(req, res) {
       recurringSchedules.forEach(recurringSchedule => {
         recurringSchedule.blocks.forEach(block => {
           if (block.recurring && block.recurrenceRule && !addedRecurrenceIds.has(block.recurrenceId)) {
+            console.log(`Checking recurring task: ${block.title}, recurrenceId: ${block.recurrenceId}`);
             const originalDate = block.originalDate || recurringSchedule.date;
             
             if (isDateInRecurrence(block.recurrenceRule, new Date(date), new Date(originalDate))) {
+              console.log(`Task ${block.title} should appear on ${date}`);
               // Check if this specific instance already exists (might be modified)
               const existingBlock = blocks.find(b => b.recurrenceId === block.recurrenceId);
               
               if (!existingBlock) {
                 // Add the recurring instance WITH all recurring properties preserved
+                const blockObj = block.toObject ? block.toObject() : block;
                 blocks.push({
-                  ...block.toObject(),
                   id: `${block.id}-${date}`,
-                  originalDate: new Date(date),
+                  title: blockObj.title,
+                  category: blockObj.category,
+                  startTime: blockObj.startTime,
+                  endTime: blockObj.endTime,
                   completed: false,
-                  // Explicitly preserve recurring properties
+                  goalId: blockObj.goalId,
+                  // Explicitly set recurring properties
                   recurring: true,
-                  recurrenceId: block.recurrenceId,
-                  recurrenceRule: block.recurrenceRule
+                  recurrenceId: blockObj.recurrenceId,
+                  recurrenceRule: blockObj.recurrenceRule,
+                  originalDate: new Date(date)
                 });
                 addedRecurrenceIds.add(block.recurrenceId);
               }
