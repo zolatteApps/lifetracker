@@ -153,9 +153,10 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleModifySchedule = () => {
-    // For now, just proceed to goal creation where they can adjust manually
-    // In future, we can add a schedule modification UI
-    handleAcceptSchedule();
+    // Close the preview modal and return to the goal creation form
+    setShowSchedulePreview(false);
+    // Keep showCreateGoalModal as true so they can edit the form
+    // The goalDetails state is already preserved
   };
 
   const handleCancelSchedule = () => {

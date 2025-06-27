@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { getApiUrl } from './environment';
+import { getApiUrl } from './environment.js';
 
 export const API_URL = getApiUrl();
 export const API_ENDPOINTS = {
