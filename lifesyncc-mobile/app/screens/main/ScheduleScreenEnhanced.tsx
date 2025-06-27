@@ -148,6 +148,24 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     
     try {
       const data = await scheduleService.getSchedule(dateStr);
+      console.log('📅 DEBUG fetchSchedule: Full response:', JSON.stringify(data, null, 2));
+      console.log('📅 DEBUG: Number of blocks:', data.blocks?.length);
+      console.log('📅 DEBUG: Checking for recurring tasks...');
+      (data.blocks || []).forEach((block: any, index: number) => {
+        console.log(`📅 DEBUG: Task ${index}: ${block.title}`);
+        console.log(`  - recurring: ${block.recurring}`);
+        console.log(`  - recurrenceId: ${block.recurrenceId}`);
+        console.log(`  - recurrenceRule: ${JSON.stringify(block.recurrenceRule)}`);
+        console.log(`  - All properties: ${Object.keys(block).join(', ')}`);
+        
+        // Check for alternative property names
+        if ((block as any).isRecurring !== undefined) {
+          console.log(`  - isRecurring (alternative): ${(block as any).isRecurring}`);
+        }
+        if ((block as any).repeat !== undefined) {
+          console.log(`  - repeat (alternative): ${(block as any).repeat}`);
+        }
+      });
       setSchedule(data.blocks || []);
       setScheduleId(data._id || '');
       setInitialLoadComplete(true);
@@ -178,6 +196,14 @@ export const ScheduleScreenEnhanced: React.FC = () => {
     
     const block = schedule.find(b => b.id === blockId);
     if (!block) return;
+    
+    console.log('🔄 DEBUG toggleTaskCompletion: block properties:', {
+      id: block.id,
+      title: block.title,
+      recurring: block.recurring,
+      recurrenceId: block.recurrenceId,
+      hasRecurrenceRule: !!block.recurrenceRule
+    });
     
     try {
       const updatedSchedule = await scheduleService.updateScheduleBlock(
@@ -476,6 +502,19 @@ export const ScheduleScreenEnhanced: React.FC = () => {
                       item.completed && styles.completedItem,
                     ]}
                     onPress={() => {
+                      console.log('🔍 DEBUG: Task clicked:', JSON.stringify(item, null, 2));
+                      console.log('🔍 DEBUG: Is recurring?', item.recurring);
+                      console.log('🔍 DEBUG: Recurrence rule:', item.recurrenceRule);
+                      
+                      // Check for other possible recurring indicators
+                      console.log('🔍 DEBUG: All task properties:', Object.keys(item));
+                      console.log('🔍 DEBUG: recurrenceId?', item.recurrenceId);
+                      console.log('🔍 DEBUG: isRecurring?', (item as any).isRecurring);
+                      console.log('🔍 DEBUG: recurringTaskId?', (item as any).recurringTaskId);
+                      console.log('🔍 DEBUG: repeatRule?', (item as any).repeatRule);
+                      console.log('🔍 DEBUG: repeat?', (item as any).repeat);
+                      console.log('🔍 DEBUG: isRepeating?', (item as any).isRepeating);
+                      
                       setSelectedTask(item);
                       setShowTaskDetailsModal(true);
                     }}

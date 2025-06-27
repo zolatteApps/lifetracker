@@ -78,8 +78,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
   useEffect(() => {
     if (task && visible) {
+      console.log('📋 DEBUG TaskDetailsModal: Task received:', JSON.stringify(task, null, 2));
+      console.log('📋 DEBUG: Task recurring?', task.recurring);
+      console.log('📋 DEBUG: Task recurrenceRule?', task.recurrenceRule);
+      console.log('📋 DEBUG: Task recurrenceId?', task.recurrenceId);
+      
+      // Workaround: Check if task has recurrenceId or recurrenceRule to determine if it's recurring
+      const isActuallyRecurring = !!(task.recurrenceId || task.recurrenceRule);
+      console.log('📋 DEBUG: Is actually recurring (based on recurrenceId/Rule)?', isActuallyRecurring);
+      
       setEditedTask({ 
         ...task,
+        // Override recurring flag based on presence of recurrenceId or recurrenceRule
+        recurring: isActuallyRecurring || task.recurring,
         recurrenceRule: task.recurrenceRule || {
           type: 'weekly',
           interval: 1,
@@ -97,8 +108,16 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const handleSave = async () => {
     if (!editedTask) return;
 
+    // Workaround: Check if task is recurring based on recurrenceId or recurrenceRule
+    const isActuallyRecurring = !!(task?.recurrenceId || task?.recurrenceRule);
+    
+    console.log('💾 DEBUG handleSave: task.recurring =', task?.recurring);
+    console.log('💾 DEBUG handleSave: isActuallyRecurring =', isActuallyRecurring);
+    console.log('💾 DEBUG handleSave: editOccurrenceChoice =', editOccurrenceChoice);
+    
     // If this is a recurring task and user hasn't chosen yet, show dialog
-    if (task?.recurring && !editOccurrenceChoice) {
+    if (isActuallyRecurring && !editOccurrenceChoice) {
+      console.log('💾 DEBUG: Showing occurrence dialog for edit');
       setShowOccurrenceDialog(true);
       return;
     }
@@ -123,10 +142,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const handleDelete = () => {
     if (!task) return;
     
+    // Workaround: Check if task is recurring based on recurrenceId or recurrenceRule
+    const isActuallyRecurring = !!(task.recurrenceId || task.recurrenceRule);
+    
+    console.log('🗑️ DEBUG handleDelete: task =', JSON.stringify(task, null, 2));
+    console.log('🗑️ DEBUG handleDelete: task.recurring =', task.recurring);
+    console.log('🗑️ DEBUG handleDelete: isActuallyRecurring =', isActuallyRecurring);
+    
     // If this is a recurring task, show occurrence choice dialog
-    if (task.recurring) {
+    if (isActuallyRecurring) {
+      console.log('🗑️ DEBUG: Showing delete occurrence dialog');
       setShowDeleteOccurrenceDialog(true);
     } else {
+      console.log('🗑️ DEBUG: Showing regular delete dialog');
       // For non-recurring tasks, show simple confirmation
       Alert.alert(
         'Delete Task',
@@ -433,7 +461,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             </View>
 
             {/* Recurring info if applicable */}
-            {task.recurring && (
+            {(task.recurring || task.recurrenceId || task.recurrenceRule) && (
               <View style={styles.section}>
                 <Text style={styles.label}>Recurring</Text>
                 <View style={styles.recurringBadge}>
