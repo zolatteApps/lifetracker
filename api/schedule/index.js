@@ -96,27 +96,66 @@ async function handler(req, res) {
       }
       
       // Handle recurring task series deletion
-      if ((deleteSeries || deleteAllOccurrences) && blockToDelete.recurring && blockToDelete.recurrenceId) {
-        console.log(`Deleting all occurrences of recurring task: ${blockToDelete.title} with recurrenceId: ${blockToDelete.recurrenceId}`);
+      if ((deleteSeries || deleteAllOccurrences)) {
+        console.log(`Attempting to delete all occurrences of task: ${blockToDelete.title}`);
+        console.log(`Block details:`, {
+          recurring: blockToDelete.recurring,
+          recurrenceId: blockToDelete.recurrenceId,
+          hasRecurrenceRule: !!blockToDelete.recurrenceRule
+        });
         
-        // Delete from current schedule
+        // Delete from current schedule first
         schedule.blocks = schedule.blocks.filter(block => block.id !== blockId);
         await schedule.save();
         
-        // Delete all future instances of this recurring task
-        const allSchedules = await Schedule.find({
-          userId,
-          'blocks.recurrenceId': blockToDelete.recurrenceId,
-          date: { $gte: schedule.date } // Only delete from current date onwards
-        });
+        // Try multiple approaches to find recurring instances
+        let allSchedules = [];
         
-        console.log(`Found ${allSchedules.length} schedules with this recurring task`);
+        // Approach 1: If we have recurrenceId, use it
+        if (blockToDelete.recurrenceId) {
+          console.log(`Searching by recurrenceId: ${blockToDelete.recurrenceId}`);
+          allSchedules = await Schedule.find({
+            userId,
+            'blocks.recurrenceId': blockToDelete.recurrenceId,
+            date: { $gte: schedule.date }
+          });
+        }
+        
+        // Approach 2: If no results, try matching by task properties
+        if (allSchedules.length === 0) {
+          console.log(`No results with recurrenceId, searching by task properties`);
+          allSchedules = await Schedule.find({
+            userId,
+            date: { $gte: schedule.date },
+            'blocks.title': blockToDelete.title,
+            'blocks.startTime': blockToDelete.startTime,
+            'blocks.endTime': blockToDelete.endTime,
+            'blocks.category': blockToDelete.category
+          });
+        }
+        
+        console.log(`Found ${allSchedules.length} schedules with matching tasks`);
         
         let deletedCount = 0;
         
         for (const sched of allSchedules) {
           const originalLength = sched.blocks.length;
-          sched.blocks = sched.blocks.filter(b => b.recurrenceId !== blockToDelete.recurrenceId);
+          
+          // Remove blocks that match our criteria
+          sched.blocks = sched.blocks.filter(b => {
+            // Keep the block if it doesn't match
+            if (blockToDelete.recurrenceId && b.recurrenceId === blockToDelete.recurrenceId) {
+              return false; // Remove it
+            }
+            // Also check by matching properties
+            if (b.title === blockToDelete.title && 
+                b.startTime === blockToDelete.startTime && 
+                b.endTime === blockToDelete.endTime &&
+                b.category === blockToDelete.category) {
+              return false; // Remove it
+            }
+            return true; // Keep it
+          });
           
           if (sched.blocks.length < originalLength) {
             await sched.save();
@@ -125,9 +164,6 @@ async function handler(req, res) {
         }
         
         console.log(`Deleted recurring task from ${deletedCount} schedules`);
-        
-        // Also remove from our recurring task tracker
-        // Note: This would need to be done on the client side
         
         return res.status(200).json({ 
           ...schedule.toObject(),

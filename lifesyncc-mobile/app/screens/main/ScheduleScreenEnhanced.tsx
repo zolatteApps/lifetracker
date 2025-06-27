@@ -201,6 +201,10 @@ export const ScheduleScreenEnhanced: React.FC = () => {
       const tasks = await RecurringTaskTracker.getRecurringTasks();
       console.log('📊 RECURRING TASKS IN TRACKER:', Object.keys(tasks).length, 'tasks');
       console.log('📊 DETAILS:', JSON.stringify(tasks, null, 2));
+      
+      // Uncomment to clear tracker for testing
+      // await RecurringTaskTracker.clearAll();
+      // console.log('🧹 Cleared all recurring tasks from tracker');
     };
     checkRecurringTasks();
   }, []);
@@ -449,9 +453,21 @@ export const ScheduleScreenEnhanced: React.FC = () => {
           );
           
           // Remove from our local tracker as well
+          console.log('🗑️ DELETE ALL: Task details:', {
+            id: task.id,
+            title: task.title,
+            recurrenceId: task.recurrenceId,
+            recurring: task.recurring
+          });
+          
           if (task.recurrenceId) {
+            console.log('🗑️ DELETE ALL: Removing from tracker with recurrenceId:', task.recurrenceId);
             await RecurringTaskTracker.removeRecurringTask(task.recurrenceId);
             console.log('✅ Removed recurring task from tracker');
+          } else {
+            console.log('⚠️ DELETE ALL: No recurrenceId found, removing by properties');
+            await RecurringTaskTracker.removeRecurringTaskByProperties(task);
+            console.log('✅ Removed recurring task from tracker by properties');
           }
           
           setSchedule(updatedSchedule.blocks);
