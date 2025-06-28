@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -27,6 +28,8 @@ interface ScheduleSession {
   monthDay?: number; // For monthly frequency: day of the month (1-31)
   endDate?: string; // Optional end date for the task
   tags?: string[]; // Tags for the task
+  repeat?: boolean; // Whether the task repeats or is one-time
+  date?: string; // Specific date for one-time tasks
 }
 
 interface SchedulePreviewModalProps {
@@ -96,9 +99,13 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     days: ['Mon', 'Wed', 'Fri'],
     totalOccurrences: 36,
     tags: [],
+    repeat: true,
+    date: new Date().toISOString(),
   });
   const [showEndDatePicker, setShowEndDatePicker] = useState<number | null>(null);
   const [showTagSelector, setShowTagSelector] = useState<number | null>(null);
+  const [showTaskDatePicker, setShowTaskDatePicker] = useState<number | null>(null);
+  const [showNewTaskDatePicker, setShowNewTaskDatePicker] = useState(false);
   const [scheduleStartDate] = useState(new Date());
   const [scheduleEndDate] = useState(() => {
     const date = new Date();
@@ -158,6 +165,9 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
   };
 
   const formatFrequency = (session: ScheduleSession) => {
+    if (!session.repeat) {
+      return session.date ? `One-time on ${formatDate(new Date(session.date))}` : 'One-time';
+    }
     if (session.frequency === 'daily') {
       const interval = session.interval || 1;
       return interval === 1 ? 'Every day' : `Every ${interval} days`;
@@ -339,6 +349,8 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       days: ['Mon', 'Wed', 'Fri'],
       totalOccurrences: 36,
       tags: [],
+      repeat: true,
+      date: new Date().toISOString(),
     });
   };
 
@@ -543,9 +555,53 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                       )}
                     </View>
                     
+                    {/* Repeat Toggle for existing tasks */}
+                    {isEditMode && (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="sync-outline" size={16} color="#666" />
+                        <Text style={styles.detailText}>Repeat</Text>
+                        <Switch
+                          value={session.repeat !== false}
+                          onValueChange={(value) => {
+                            const newDetails = { ...editedDetails };
+                            const updatedSession = newDetails.proposedSchedule.sessions[index];
+                            updatedSession.repeat = value;
+                            
+                            if (!value) {
+                              // Converting to one-time task
+                              updatedSession.date = updatedSession.date || new Date().toISOString();
+                              updatedSession.totalOccurrences = 1;
+                              Alert.alert(
+                                'Convert to One-time Task',
+                                'This will keep only the next occurrence. Continue?',
+                                [
+                                  { text: 'Cancel', style: 'cancel' },
+                                  { 
+                                    text: 'Continue', 
+                                    onPress: () => setEditedDetails(newDetails)
+                                  }
+                                ]
+                              );
+                            } else {
+                              // Converting to recurring task
+                              updatedSession.frequency = 'weekly';
+                              updatedSession.days = ['Mon', 'Wed', 'Fri'];
+                              updatedSession.daysPerWeek = 3;
+                              updatedSession.totalOccurrences = calculateTotalSessions('weekly', 12, 1, 3);
+                              setEditedDetails(newDetails);
+                            }
+                          }}
+                          trackColor={{ false: '#E5E7EB', true: `${categoryColor}40` }}
+                          thumbColor={session.repeat !== false ? categoryColor : '#9CA3AF'}
+                          style={styles.repeatSwitch}
+                        />
+                      </View>
+                    )}
+                    
+                    {/* Frequency/Date Row */}
                     <View style={styles.detailRow}>
                       <Ionicons name="repeat-outline" size={16} color="#666" />
-                      {isEditMode ? (
+                      {isEditMode && session.repeat !== false ? (
                         <View style={styles.frequencyEditContainer}>
                           <Picker
                             selectedValue={session.frequency}
@@ -580,13 +636,22 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                             <Picker.Item label="Monthly" value="monthly" />
                           </Picker>
                         </View>
+                      ) : isEditMode && session.repeat === false ? (
+                        <TouchableOpacity
+                          style={styles.dateButton}
+                          onPress={() => setShowTaskDatePicker(index)}
+                        >
+                          <Text style={styles.detailText}>
+                            {session.date ? formatDate(new Date(session.date)) : 'Select date'}
+                          </Text>
+                        </TouchableOpacity>
                       ) : (
                         <Text style={styles.detailText}>{formatFrequency(session)}</Text>
                       )}
                     </View>
                     
                     {/* Frequency-specific UI */}
-                    {session.frequency === 'weekly' && (
+                    {session.repeat !== false && session.frequency === 'weekly' && (
                       <View style={styles.daysContainer}>
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                           <TouchableOpacity
@@ -612,7 +677,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                       </View>
                     )}
                     
-                    {session.frequency === 'daily' && isEditMode && (
+                    {session.repeat !== false && session.frequency === 'daily' && isEditMode && (
                       <View style={styles.dailyFrequencyContainer}>
                         <Text style={styles.detailText}>Every </Text>
                         <TextInput
@@ -632,7 +697,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                       </View>
                     )}
                     
-                    {session.frequency === 'monthly' && isEditMode && (
+                    {session.repeat !== false && session.frequency === 'monthly' && isEditMode && (
                       <View style={styles.monthlyFrequencyContainer}>
                         <Text style={styles.detailText}>Day </Text>
                         <TextInput
@@ -697,28 +762,41 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                       </View>
                     )}
                     
-                    <View style={styles.totalRow}>
-                      {isEditMode ? (
-                        <View style={styles.totalEditContainer}>
-                          <Text style={styles.totalText}>Total: </Text>
-                          <TextInput
-                            style={styles.totalInput}
-                            value={session.totalOccurrences.toString()}
-                            onChangeText={(text) => {
-                              const newDetails = { ...editedDetails };
-                              newDetails.proposedSchedule.sessions[index].totalOccurrences = parseInt(text) || 0;
-                              setEditedDetails(newDetails);
-                            }}
-                            keyboardType="numeric"
-                          />
-                          <Text style={styles.totalText}> sessions</Text>
+                    {/* Only show total for recurring tasks */}
+                    {session.repeat !== false && (
+                      <View style={styles.totalRow}>
+                        {isEditMode ? (
+                          <View style={styles.totalEditContainer}>
+                            <Text style={styles.totalText}>Total: </Text>
+                            <TextInput
+                              style={styles.totalInput}
+                              value={session.totalOccurrences.toString()}
+                              onChangeText={(text) => {
+                                const newDetails = { ...editedDetails };
+                                newDetails.proposedSchedule.sessions[index].totalOccurrences = parseInt(text) || 0;
+                                setEditedDetails(newDetails);
+                              }}
+                              keyboardType="numeric"
+                            />
+                            <Text style={styles.totalText}> sessions</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.totalText}>
+                            Total: {session.totalOccurrences} sessions
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                    
+                    {/* Show badge for one-time tasks */}
+                    {session.repeat === false && !isEditMode && (
+                      <View style={styles.oneTimeBadgeContainer}>
+                        <View style={[styles.oneTimeBadge, { backgroundColor: `${categoryColor}20` }]}>
+                          <Ionicons name="time-outline" size={12} color={categoryColor} />
+                          <Text style={[styles.oneTimeBadgeText, { color: categoryColor }]}>One-time</Text>
                         </View>
-                      ) : (
-                        <Text style={styles.totalText}>
-                          Total: {session.totalOccurrences} sessions
-                        </Text>
-                      )}
-                    </View>
+                      </View>
+                    )}
                   </View>
                 </View>
               ))}
@@ -772,6 +850,116 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                     </View>
                   </View>
                   
+                  {/* Repeat Toggle */}
+                  <View style={styles.repeatToggleContainer}>
+                    <Text style={styles.repeatToggleLabel}>Repeat</Text>
+                    <Switch
+                      value={newTask.repeat}
+                      onValueChange={(value) => {
+                        const updated = { ...newTask, repeat: value };
+                        if (value) {
+                          // Switching to repeat mode - set default frequency values
+                          updated.frequency = 'weekly';
+                          updated.days = ['Mon', 'Wed', 'Fri'];
+                          updated.daysPerWeek = 3;
+                          updated.totalOccurrences = 36;
+                        } else {
+                          // Switching to one-time - set date to today
+                          updated.date = new Date().toISOString();
+                          updated.totalOccurrences = 1;
+                        }
+                        setNewTask(updated);
+                      }}
+                      trackColor={{ false: '#E5E7EB', true: `${categoryColor}40` }}
+                      thumbColor={newTask.repeat ? categoryColor : '#9CA3AF'}
+                    />
+                  </View>
+                  
+                  {/* Conditional UI based on repeat toggle */}
+                  {newTask.repeat ? (
+                    <>
+                      {/* Frequency Selector */}
+                      <View style={styles.frequencyContainer}>
+                        <Text style={styles.addTaskLabel}>Frequency</Text>
+                        <View style={styles.frequencyPickerContainer}>
+                          <Picker
+                            selectedValue={newTask.frequency}
+                            onValueChange={(value) => {
+                              const updated = { ...newTask, frequency: value };
+                              if (value === 'daily') {
+                                updated.interval = 1;
+                                updated.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                updated.daysPerWeek = 7;
+                              } else if (value === 'weekly') {
+                                updated.days = ['Mon', 'Wed', 'Fri'];
+                                updated.daysPerWeek = 3;
+                              } else if (value === 'monthly') {
+                                updated.monthDay = 1;
+                                updated.days = [];
+                                updated.daysPerWeek = 0;
+                              }
+                              setNewTask(updated);
+                            }}
+                            style={styles.frequencyPicker}
+                          >
+                            <Picker.Item label="Daily" value="daily" />
+                            <Picker.Item label="Weekly" value="weekly" />
+                            <Picker.Item label="Monthly" value="monthly" />
+                          </Picker>
+                        </View>
+                      </View>
+                      
+                      {/* Frequency-specific options */}
+                      {newTask.frequency === 'weekly' && (
+                        <View style={styles.daysContainer}>
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                            <TouchableOpacity
+                              key={day}
+                              onPress={() => {
+                                const updated = { ...newTask };
+                                if (updated.days.includes(day)) {
+                                  updated.days = updated.days.filter(d => d !== day);
+                                } else {
+                                  updated.days.push(day);
+                                }
+                                updated.daysPerWeek = updated.days.length;
+                                setNewTask(updated);
+                              }}
+                              style={[
+                                styles.dayBadge,
+                                newTask.days.includes(day) && styles.dayBadgeActive,
+                                newTask.days.includes(day) && { backgroundColor: categoryColor },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.dayText,
+                                  newTask.days.includes(day) && styles.dayTextActive,
+                                ]}
+                              >
+                                {day.charAt(0)}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    /* One-time task date picker */
+                    <View style={styles.oneTimeDateContainer}>
+                      <Text style={styles.addTaskLabel}>Date</Text>
+                      <TouchableOpacity
+                        style={styles.datePickerButton}
+                        onPress={() => setShowNewTaskDatePicker(true)}
+                      >
+                        <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                        <Text style={styles.datePickerText}>
+                          {newTask.date ? formatDate(new Date(newTask.date)) : 'Select date'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  
                   <View style={styles.addTaskActions}>
                     <TouchableOpacity
                       style={styles.addTaskCancelButton}
@@ -786,6 +974,8 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                           days: ['Mon', 'Wed', 'Fri'],
                           totalOccurrences: 36,
                           tags: [],
+                          repeat: true,
+                          date: new Date().toISOString(),
                         });
                       }}
                     >
@@ -834,7 +1024,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
               <>
                 <TouchableOpacity
                   style={styles.previewButton}
-                  onPress={() => Alert.alert('Calendar Preview', 'Calendar preview would appear here')}
+                  onPress={() => Alert.alert('Calendar Preview', 'Coming soon')}
                 >
                   <Ionicons name="calendar" size={20} color="#8B5CF6" />
                 </TouchableOpacity>
@@ -924,6 +1114,45 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
             setShowTagSelector(null);
           }}
           predefinedTags={predefinedTags}
+        />
+      )}
+
+      {/* Date Picker for One-time Tasks */}
+      {showTaskDatePicker !== null && (
+        <DateTimePicker
+          value={(() => {
+            const session = editedDetails.proposedSchedule.sessions[showTaskDatePicker];
+            return session.date ? new Date(session.date) : new Date();
+          })()}
+          mode="date"
+          display="default"
+          minimumDate={scheduleStartDate}
+          maximumDate={scheduleEndDate}
+          onChange={(event, selectedDate) => {
+            if (event.type === 'set' && selectedDate) {
+              const newDetails = { ...editedDetails };
+              newDetails.proposedSchedule.sessions[showTaskDatePicker].date = selectedDate.toISOString();
+              setEditedDetails(newDetails);
+            }
+            setShowTaskDatePicker(null);
+          }}
+        />
+      )}
+
+      {/* Date Picker for New One-time Task */}
+      {showNewTaskDatePicker && (
+        <DateTimePicker
+          value={newTask.date ? new Date(newTask.date) : new Date()}
+          mode="date"
+          display="default"
+          minimumDate={scheduleStartDate}
+          maximumDate={scheduleEndDate}
+          onChange={(event, selectedDate) => {
+            if (event.type === 'set' && selectedDate) {
+              setNewTask({ ...newTask, date: selectedDate.toISOString() });
+            }
+            setShowNewTaskDatePicker(false);
+          }}
         />
       )}
     </Modal>
@@ -1469,5 +1698,68 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+  },
+  repeatToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  repeatToggleLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  repeatSwitch: {
+    marginLeft: 8,
+  },
+  frequencyContainer: {
+    marginBottom: 16,
+  },
+  frequencyPickerContainer: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  oneTimeDateContainer: {
+    marginBottom: 16,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 8,
+  },
+  dateButton: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    paddingVertical: 2,
+  },
+  oneTimeBadgeContainer: {
+    marginTop: 8,
+  },
+  oneTimeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  oneTimeBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
 });
