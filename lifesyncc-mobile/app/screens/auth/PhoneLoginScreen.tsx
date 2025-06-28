@@ -36,7 +36,7 @@ const COUNTRY_CODES = [
 
 export const PhoneLoginScreen: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[1]); // Default to India
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
@@ -127,13 +127,13 @@ export const PhoneLoginScreen: React.FC = () => {
               </TouchableOpacity>
               <TextInput
                 style={styles.phoneInput}
-                placeholder="123-456-7890"
+                placeholder={selectedCountry.code === '+91' ? "12345-67890" : "123-456-7890"}
                 placeholderTextColor="#999"
                 value={phoneNumber}
                 onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
                 keyboardType="phone-pad"
                 editable={!loading}
-                maxLength={12}
+                maxLength={selectedCountry.code === '+91' ? 11 : 12}
               />
             </View>
           </View>

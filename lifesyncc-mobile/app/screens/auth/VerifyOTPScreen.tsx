@@ -9,11 +9,13 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ScrollView
+  ScrollView,
+  ToastAndroid
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { authService } from '../../services/auth.service';
+import SMSOTPService from '../../services/SMSOTPService';
 
 export const VerifyOTPScreen: React.FC = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -41,8 +43,74 @@ export const VerifyOTPScreen: React.FC = () => {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    // Start SMS listener for Android
+    if (Platform.OS === 'android') {
+      startSMSListener();
+    }
+
+    return () => {
+      clearInterval(timer);
+      // Stop SMS listener when component unmounts
+      SMSOTPService.stopListening();
+    };
   }, []);
+
+  const startSMSListener = async () => {
+    console.log('Starting SMS listener...');
+    try {
+      const started = await SMSOTPService.startListening((event) => {
+        console.log('=== OTP Event Received ===');
+        console.log('Event:', JSON.stringify(event, null, 2));
+        console.log('Message:', event.message);
+        console.log('Sender:', event.sender);
+        console.log('OTP from event:', event.otp);
+        
+        // Try to use the OTP from the event first
+        let detectedOTP = event.otp;
+        
+        // If not found in event, try to extract from message
+        if (!detectedOTP) {
+          console.log('Extracting OTP from message...');
+          detectedOTP = SMSOTPService.extractOTPFromMessage(event.message);
+          console.log('Extracted OTP:', detectedOTP);
+        }
+        
+        if (detectedOTP && detectedOTP.length >= 4 && detectedOTP.length <= 6) {
+          console.log('Valid OTP detected:', detectedOTP);
+          
+          // Pad with empty strings if less than 6 digits
+          const otpArray = detectedOTP.padEnd(6, '').split('').slice(0, 6);
+          setOtp(otpArray);
+          
+          // Show toast notification
+          if (Platform.OS === 'android') {
+            ToastAndroid.show('OTP detected and filled automatically', ToastAndroid.SHORT);
+          }
+          
+          // Auto-submit if exactly 6 digits
+          if (detectedOTP.length === 6) {
+            setTimeout(() => {
+              console.log('Auto-submitting OTP...');
+              handleVerifyOTP(detectedOTP);
+            }, 500);
+          }
+        } else {
+          console.log('Invalid OTP length or not detected');
+        }
+      });
+
+      console.log('SMS listener started:', started);
+      if (!started) {
+        console.log('SMS permission not granted or service not available');
+        Alert.alert(
+          'SMS Permission', 
+          'SMS permission is required to auto-detect OTP. Please grant the permission in settings.'
+        );
+      }
+    } catch (error) {
+      console.error('Error starting SMS listener:', error);
+    }
+  };
 
   const handleOtpChange = (value: string, index: number) => {
     if (value.length > 1) {
