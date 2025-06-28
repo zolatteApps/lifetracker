@@ -50,47 +50,49 @@ export const GoalDetailsScreen: React.FC = () => {
 
   const fetchGoalAnalytics = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/goals/${goal._id || goal.id}/analytics`, {
+      // Temporarily use query parameter to avoid Vercel routing issues
+      const response = await fetch(`${API_URL}/api/goals-analytics?goalId=${goal._id || goal.id}`, {
         headers: {
           'Authorization': `Bearer ${user?.token}`,
         },
       });
       
       if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          setAnalytics(data);
+        } else {
+          console.log('Analytics endpoint returned non-JSON response');
+          // Set mock analytics data
+          setMockAnalytics();
+        }
       } else {
         console.log('Analytics endpoint not available or returned error:', response.status);
-        // Set mock analytics data for now to show the UI
-        setAnalytics({
-          analytics: {
-            averageProgressPerDay: goal.progress > 0 ? parseFloat((goal.progress / 30).toFixed(2)) : 0,
-            projectedCompletionDate: null,
-            totalUpdates: 0
-          },
-          progressHistory: [],
-          weeklyProgress: [],
-          streak: { current: 0, best: 0 },
-          bestDays: []
-        });
+        // Set mock analytics data
+        setMockAnalytics();
       }
     } catch (error) {
       console.error('Error fetching goal analytics:', error);
-      // Set mock analytics data for now to show the UI
-      setAnalytics({
-        analytics: {
-          averageProgressPerDay: goal.progress > 0 ? parseFloat((goal.progress / 30).toFixed(2)) : 0,
-          projectedCompletionDate: null,
-          totalUpdates: 0
-        },
-        progressHistory: [],
-        weeklyProgress: [],
-        streak: { current: 0, best: 0 },
-        bestDays: []
-      });
+      // Set mock analytics data
+      setMockAnalytics();
     } finally {
       setLoading(false);
     }
+  };
+
+  const setMockAnalytics = () => {
+    setAnalytics({
+      analytics: {
+        averageProgressPerDay: goal.progress > 0 ? parseFloat((goal.progress / 30).toFixed(2)) : 0,
+        projectedCompletionDate: null,
+        totalUpdates: 0
+      },
+      progressHistory: [],
+      weeklyProgress: [],
+      streak: { current: 0, best: 0 },
+      bestDays: []
+    });
   };
 
   const updateGoalProgress = async (goalId: string, newValue: number) => {
