@@ -273,7 +273,17 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     if (onUpdate) {
       onUpdate(updatedDetails);
     }
-    setIsEditMode(false);
+    
+    // If this is manual mode (creating a new goal), trigger accept after saving
+    if (goalDetails?.isManualMode) {
+      setIsEditMode(false);
+      // Small delay to ensure state updates
+      setTimeout(() => {
+        onAccept();
+      }, 100);
+    } else {
+      setIsEditMode(false);
+    }
   };
 
   const handleCancelEdit = () => {
