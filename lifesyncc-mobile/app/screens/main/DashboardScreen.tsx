@@ -140,6 +140,19 @@ export const DashboardScreen: React.FC = () => {
   const handleAcceptSchedule = async () => {
     setIsCreatingGoal(true);
     
+    // Show intermediate creating popup
+    Alert.alert(
+      'Creating Schedule',
+      'Your schedule is being created in the background, you can proceed using the app until it is done.',
+      [
+        {
+          text: 'OK',
+          style: 'default'
+        }
+      ],
+      { cancelable: true }
+    );
+    
     try {
       // Prepare goal data
       const scheduleStartDate = goalDetails.scheduleStartDate ? new Date(goalDetails.scheduleStartDate) : new Date();

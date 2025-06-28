@@ -311,6 +311,8 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     if (goalDetails?.isManualMode) {
       // For manual mode (creating a new goal), use onAccept
       onAccept(updatedDetails);
+      // Close the modal (this was missing!)
+      onCancel();
     } else {
       // For editing existing goal, use onUpdate
       if (onUpdate) {
