@@ -1,5 +1,6 @@
 const connectDB = require('../lib/mongodb.js');
 const Goal = require('../models/Goal.js');
+const User = require('../models/User.js');
 const { verifyToken } = require('../lib/auth-middleware.js');
 
 const handler = async (req, res) => {
@@ -22,8 +23,20 @@ const handler = async (req, res) => {
   try {
     await connectDB();
 
-    // Check if goal exists and belongs to user
-    const goal = await Goal.findOne({ _id: id, userId: req.userId });
+    // Check if user is admin
+    const currentUser = await User.findById(req.userId);
+    const isAdmin = currentUser && currentUser.role === 'admin';
+
+    // Check if goal exists
+    let goal;
+    if (isAdmin) {
+      // Admin can access any goal
+      goal = await Goal.findById(id);
+    } else {
+      // Regular users can only access their own goals
+      goal = await Goal.findOne({ _id: id, userId: req.userId });
+    }
+    
     if (!goal) {
       return res.status(404).json({ error: 'Goal not found' });
     }
@@ -49,7 +62,13 @@ const handler = async (req, res) => {
 
       case 'DELETE':
         // Delete goal
-        await Goal.deleteOne({ _id: id, userId: req.userId });
+        if (isAdmin) {
+          // Admin can delete any goal
+          await Goal.deleteOne({ _id: id });
+        } else {
+          // Regular users can only delete their own goals
+          await Goal.deleteOne({ _id: id, userId: req.userId });
+        }
         return res.status(200).json({ message: 'Goal deleted successfully' });
 
       default:
