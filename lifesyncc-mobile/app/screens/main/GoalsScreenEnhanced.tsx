@@ -72,8 +72,11 @@ export const GoalsScreenEnhanced: React.FC = () => {
         });
         
         if (response.ok) {
-          const analytics = await response.json();
-          setSummaryAnalytics(analytics);
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const analytics = await response.json();
+            setSummaryAnalytics(analytics);
+          }
         }
       } catch (analyticsError) {
         console.log('Analytics fetch failed, but continuing:', analyticsError);
@@ -94,7 +97,8 @@ export const GoalsScreenEnhanced: React.FC = () => {
 
   const fetchGoalAnalytics = async (goalId: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/goals/${goalId}/analytics`, {
+      // Temporarily use query parameter to avoid Vercel routing issues
+      const response = await fetch(`${API_URL}/api/goals-analytics?goalId=${goalId}`, {
         headers: {
           'Authorization': `Bearer ${user?.token}`,
         },
@@ -117,6 +121,8 @@ export const GoalsScreenEnhanced: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching goal analytics:', error);
+      // Set null analytics to prevent crashes
+      setSelectedGoalAnalytics(null);
     }
   };
 
