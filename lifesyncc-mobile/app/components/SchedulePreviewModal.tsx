@@ -90,12 +90,6 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
   const [editedDetails, setEditedDetails] = useState<any>(null);
   const [showTimePicker, setShowTimePicker] = useState<number | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [backupDetails, setBackupDetails] = useState<any>(null);
-  const [showSuccessFeedback, setShowSuccessFeedback] = useState(false);
-  const [successState, setSuccessState] = useState<'creating' | 'complete'>('creating');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [pendingCancelDuringSave, setPendingCancelDuringSave] = useState(false);
   const [newTask, setNewTask] = useState<ScheduleSession>({
     activity: '',
     frequency: 'weekly',
@@ -132,20 +126,6 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     }
   }, [goalDetails, visible]);
 
-  // Handle pending cancel when save completes
-  useEffect(() => {
-    if (pendingCancelDuringSave && successState === 'complete') {
-      setPendingCancelDuringSave(false);
-      Alert.alert(
-        'Schedule Created',
-        'Your schedule has been created successfully. Do you still want to close?',
-        [
-          { text: 'Stay', style: 'cancel' },
-          { text: 'Close', onPress: onCancel },
-        ]
-      );
-    }
-  }, [pendingCancelDuringSave, successState]);
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
@@ -315,14 +295,10 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     return true;
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = () => {
     if (!validateSchedule()) {
       return;
     }
-    
-    // Create backup before making changes
-    const backup = JSON.parse(JSON.stringify(editedDetails));
-    setBackupDetails(backup);
     
     // Add schedule dates to the details
     const updatedDetails = {
@@ -331,76 +307,23 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       scheduleEndDate: scheduleEndDate
     };
     
-    // Optimistic update - exit edit mode and show success immediately
-    setIsEditMode(false);
-    setIsSaving(true);
-    setSuccessState('creating');
-    setShowSuccessFeedback(true);
-    
-    try {
+    // Close modal and let parent handle success
+    if (goalDetails?.isManualMode) {
+      // For manual mode (creating a new goal), use onAccept
+      onAccept(updatedDetails);
+    } else {
+      // For editing existing goal, use onUpdate
       if (onUpdate) {
-        // Simulate async operation if onUpdate is synchronous
-        await Promise.resolve(onUpdate(updatedDetails));
+        onUpdate(updatedDetails);
       }
-      
-      // If this is manual mode (creating a new goal), trigger accept with updated details
-      if (goalDetails?.isManualMode) {
-        // Small delay to show saving state
-        await new Promise(resolve => setTimeout(resolve, 500));
-        onAccept(updatedDetails);
-      }
-      
-      // Clear backup on success
-      setBackupDetails(null);
-      
-      // Update to complete state
-      setSuccessState('complete');
-      setIsSaving(false);
-      
-      // Auto-hide success feedback after 2 seconds from completion
-      setTimeout(() => {
-        setShowSuccessFeedback(false);
-      }, 2000);
-    } catch (error) {
-      // Revert to backup on failure
-      setEditedDetails(backup);
-      setIsEditMode(true);
-      setShowSuccessFeedback(false);
-      setErrorMessage('Failed to save changes. Please try again.');
-      
-      // Auto-hide error after 5 seconds
-      setTimeout(() => {
-        setErrorMessage(null);
-      }, 5000);
-    } finally {
-      setIsSaving(false);
+      // Close the modal
+      onCancel();
     }
   };
 
   const handleCancelEdit = () => {
-    // If saving is in progress, show confirmation
-    if (showSuccessFeedback && successState === 'creating') {
-      Alert.alert(
-        'Creating Schedule',
-        'Schedule is being created. Are you sure you want to cancel?',
-        [
-          { text: 'Wait', style: 'cancel' },
-          {
-            text: 'Cancel Anyway',
-            style: 'destructive',
-            onPress: () => {
-              setEditedDetails(JSON.parse(JSON.stringify(goalDetails)));
-              setIsEditMode(false);
-              setIsSaving(false);
-              setShowSuccessFeedback(false);
-            },
-          },
-        ]
-      );
-    } else {
-      setEditedDetails(JSON.parse(JSON.stringify(goalDetails)));
-      setIsEditMode(false);
-    }
+    setEditedDetails(JSON.parse(JSON.stringify(goalDetails)));
+    setIsEditMode(false);
   };
 
   const toggleDay = (sessionIndex: number, day: string) => {
@@ -515,43 +438,6 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       onRequestClose={onCancel}
     >
       <View style={styles.container}>
-        {/* Success Feedback */}
-        {showSuccessFeedback && (
-          <TouchableOpacity 
-            style={[styles.feedbackContainer, styles.successFeedback]}
-            activeOpacity={successState === 'creating' ? 1 : 0.8}
-            onPress={successState === 'complete' ? () => setShowSuccessFeedback(false) : undefined}
-          >
-            {successState === 'creating' ? (
-              <>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.successText}>Creating schedule...</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.successText}>Schedule created successfully!</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
-        
-        {/* Error Feedback */}
-        {errorMessage && (
-          <View style={[styles.feedbackContainer, styles.errorFeedback]}>
-            <Ionicons name="alert-circle" size={20} color="#EF4444" />
-            <Text style={styles.errorText}>{errorMessage}</Text>
-            <TouchableOpacity 
-              onPress={() => {
-                setErrorMessage(null);
-                handleSaveChanges();
-              }}
-              style={styles.retryButton}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
         
         <View style={styles.modal}>
           <View style={styles.header}>
@@ -559,7 +445,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
               {isEditMode ? 'Edit Goal & Schedule' : 'Goal & Schedule Preview'}
             </Text>
             <TouchableOpacity 
-              onPress={showSuccessFeedback && successState === 'creating' ? () => setPendingCancelDuringSave(true) : onCancel} 
+              onPress={onCancel} 
               style={styles.closeButton}
             >
               <Ionicons name="close" size={24} color="#666" />
@@ -1371,7 +1257,6 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                 <TouchableOpacity
                   style={[styles.saveButton, { backgroundColor: categoryColor }]}
                   onPress={handleSaveChanges}
-                  disabled={isSaving}
                 >
                   <Ionicons name="checkmark" size={20} color="#fff" />
                   <Text style={styles.saveButtonText}>Save Changes</Text>
@@ -1911,61 +1796,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginLeft: 6,
-  },
-  feedbackContainer: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  successFeedback: {
-    backgroundColor: '#10B981',
-  },
-  errorFeedback: {
-    backgroundColor: '#EF4444',
-  },
-  successText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-    marginLeft: 8,
-  },
-  errorText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-    marginLeft: 8,
-  },
-  retryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  retryButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  disabledInput: {
-    opacity: 0.6,
-    backgroundColor: '#F9FAFB',
   },
   scheduleTitleContainer: {
     marginBottom: 8,
