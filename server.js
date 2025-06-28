@@ -30,8 +30,8 @@ const adminFeedbackDetailRoute = require('./api/admin/feedback/[id]');
 const goalsRoute = require('./api/goals/index');
 const goalDetailRoute = require('./api/goals/[id]');
 const goalProgressRoute = require('./api/goals/[id]/progress');
-const goalAnalyticsRoute = require('./pages/api/goals/[id]/analytics');
-const goalAnalyticsSummaryRoute = require('./pages/api/goals/analytics/summary');
+const goalAnalyticsRoute = require('./api/goals/[id]/analytics');
+const goalAnalyticsSummaryRoute = require('./api/goals/analytics/summary');
 
 // Feedback routes
 const feedbackRoute = require('./api/feedback/index');
@@ -101,6 +101,9 @@ app.delete('/api/goals/:id', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalDetailRoute)(req, res);
 });
+// Analytics summary route MUST come before :id routes to avoid route conflicts
+app.get('/api/goals/analytics/summary', wrapHandler(goalAnalyticsSummaryRoute));
+
 app.put('/api/goals/:id/progress', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalProgressRoute)(req, res);
@@ -109,7 +112,6 @@ app.get('/api/goals/:id/analytics', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalAnalyticsRoute)(req, res);
 });
-app.get('/api/goals/analytics/summary', wrapHandler(goalAnalyticsSummaryRoute));
 
 // Feedback routes
 app.get('/api/feedback', wrapHandler(feedbackRoute));
