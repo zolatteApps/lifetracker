@@ -15,20 +15,28 @@ const goalSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  frequency: {
+  type: {
     type: String,
-    enum: ['daily', 'weekly', 'monthly'],
-    default: 'daily'
+    enum: ['milestone', 'numeric', 'habit'],
+    default: 'habit'
   },
-  status: {
+  priority: {
     type: String,
-    enum: ['active', 'paused', 'completed'],
-    default: 'active'
+    enum: ['high', 'medium', 'low'],
+    default: 'medium'
   },
   progress: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    max: 100
   },
+  completed: {
+    type: Boolean,
+    default: false
+  },
+  scheduleStartDate: Date,
+  scheduleEndDate: Date,
   createdAt: {
     type: Date,
     default: Date.now
@@ -37,6 +45,12 @@ const goalSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+// Add pre-save middleware to update the updatedAt timestamp
+goalSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
 });
 
 module.exports = mongoose.model('Goal', goalSchema);
