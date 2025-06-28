@@ -130,10 +130,11 @@ class GoalService {
 
   async updateProgress(id: string, progressData: { currentValue?: number; progress?: number }): Promise<Goal> {
     console.log('GoalService.updateProgress called with:', { id, progressData });
-    console.log('API URL:', `${API_URL}/api/goals/${id}/progress`);
+    // Use query parameter to avoid Vercel routing issues
+    console.log('API URL:', `${API_URL}/api/goals-progress?goalId=${id}`);
     
     try {
-      const data = await this.makeRequest(`${API_URL}/api/goals/${id}/progress`, {
+      const data = await this.makeRequest(`${API_URL}/api/goals-progress?goalId=${id}`, {
         method: 'PUT',
         body: JSON.stringify(progressData),
       });

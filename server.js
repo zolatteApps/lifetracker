@@ -113,6 +113,8 @@ app.put('/api/goals/:id/progress', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalProgressRoute)(req, res);
 });
+// Workaround endpoint for Vercel
+app.put('/api/goals-progress', wrapHandler(require('./api/goals-progress')));
 app.get('/api/goals/:id/analytics', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalAnalyticsRoute)(req, res);
