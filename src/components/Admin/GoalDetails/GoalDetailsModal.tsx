@@ -67,7 +67,7 @@ const GoalDetailsModal: React.FC<GoalDetailsModalProps> = ({
       // In a real app, you'd fetch progress history from the API
       // For now, we'll use mock data
       setProgressHistory([
-        { date: new Date().toISOString(), value: goal.progress || 0 },
+        { date: new Date().toISOString(), value: goal?.progress || 0 },
       ]);
       
     } catch (error) {
