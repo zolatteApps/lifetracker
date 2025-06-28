@@ -137,6 +137,16 @@ const UserDetails: React.FC = () => {
     setShowGoalModal(true);
   };
 
+  const handleGoalDelete = (goalId: string) => {
+    // Remove the deleted goal from the local state
+    setGoals(prevGoals => prevGoals.filter(goal => 
+      (goal.id || goal._id) !== goalId
+    ));
+    // Close the modal
+    setShowGoalModal(false);
+    setSelectedGoal(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -410,6 +420,7 @@ const UserDetails: React.FC = () => {
           setSelectedGoal(null);
         }}
         userId={userId || ''}
+        onDelete={handleGoalDelete}
       />
     </div>
   );

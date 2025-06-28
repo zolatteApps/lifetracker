@@ -11,7 +11,8 @@ import {
   Activity,
   Flag,
   Layers,
-  BarChart2
+  BarChart2,
+  Trash2
 } from 'lucide-react';
 
 interface GoalDetailsModalProps {
@@ -19,17 +20,21 @@ interface GoalDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
+  onDelete?: (goalId: string) => void;
 }
 
 const GoalDetailsModal: React.FC<GoalDetailsModalProps> = ({
   goal,
   isOpen,
   onClose,
-  userId
+  userId,
+  onDelete
 }) => {
   const [loading, setLoading] = useState(false);
   const [scheduleData, setScheduleData] = useState<any>(null);
   const [progressHistory, setProgressHistory] = useState<any[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (goal && isOpen) {
@@ -117,6 +122,43 @@ const GoalDetailsModal: React.FC<GoalDetailsModalProps> = ({
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleDelete = async () => {
+    if (!goal) return;
+    
+    setDeleteLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      
+      const response = await fetch(
+        `${apiUrl}/api/goals/${goal.id || goal._id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (response.ok) {
+        // Call the onDelete callback if provided
+        if (onDelete) {
+          onDelete(goal.id || goal._id || '');
+        }
+        onClose();
+      } else {
+        console.error('Failed to delete goal');
+        alert('Failed to delete goal. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+      alert('An error occurred while deleting the goal.');
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   return (
@@ -326,7 +368,35 @@ const GoalDetailsModal: React.FC<GoalDetailsModalProps> = ({
 
         {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <div>
+              {showDeleteConfirm ? (
+                <div className="flex items-center space-x-3">
+                  <span className="text-red-600 font-medium">Are you sure you want to delete this goal?</span>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleteLoading}
+                    className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <Trash2 size={18} className="mr-2" />
+                  Delete Goal
+                </button>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
