@@ -134,6 +134,13 @@ export const DashboardScreen: React.FC = () => {
     
     try {
       // Prepare goal data
+      const scheduleStartDate = goalDetails.scheduleStartDate ? new Date(goalDetails.scheduleStartDate) : new Date();
+      const scheduleEndDate = goalDetails.scheduleEndDate ? new Date(goalDetails.scheduleEndDate) : (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 84); // 12 weeks default
+        return date;
+      })();
+      
       const goalData = {
         category: goalDetails.category,
         title: goalDetails.title,
@@ -144,7 +151,9 @@ export const DashboardScreen: React.FC = () => {
         currentValue: goalDetails.currentValue || 0,
         unit: goalDetails.unit || '',
         dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
-        completed: false
+        completed: false,
+        scheduleStartDate: scheduleStartDate,
+        scheduleEndDate: scheduleEndDate
       };
 
       // Create the goal
@@ -209,24 +218,31 @@ export const DashboardScreen: React.FC = () => {
     let errors = [];
     
     for (const session of proposedSchedule.sessions) {
+      // Determine the end date for this task
+      const taskEndDate = session.endDate ? new Date(session.endDate) : null;
+      
       // Create schedule entries based on frequency
       if (session.frequency === 'daily') {
-        // Create entries for the next 30 days
+        // Create entries based on interval
+        const interval = session.interval || 1;
+        let currentDate = new Date(today);
+        
         for (let i = 0; i < session.totalOccurrences; i++) {
-          const date = new Date(today);
-          date.setDate(date.getDate() + i);
-          
-          // Check if this day is included
-          const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-          if (session.days.includes(dayName)) {
-            try {
-              await createScheduleEntry(date, session, goal);
-              createdCount++;
-            } catch (error) {
-              console.error(`Failed to create schedule entry for ${date.toDateString()}:`, error);
-              errors.push({ date: date.toDateString(), error });
-            }
+          // Check if we've passed the task end date
+          if (taskEndDate && currentDate > taskEndDate) {
+            break;
           }
+          
+          try {
+            await createScheduleEntry(currentDate, session, goal);
+            createdCount++;
+          } catch (error) {
+            console.error(`Failed to create schedule entry for ${currentDate.toDateString()}:`, error);
+            errors.push({ date: currentDate.toDateString(), error });
+          }
+          
+          // Move to next scheduled day based on interval
+          currentDate.setDate(currentDate.getDate() + interval);
         }
       } else if (session.frequency === 'weekly') {
         // Create weekly entries
@@ -234,6 +250,11 @@ export const DashboardScreen: React.FC = () => {
         let currentDate = new Date(today);
         
         while (occurrences < session.totalOccurrences) {
+          // Check if we've passed the task end date
+          if (taskEndDate && currentDate > taskEndDate) {
+            break;
+          }
+          
           const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getDay()];
           if (session.days.includes(dayName)) {
             try {
@@ -247,6 +268,46 @@ export const DashboardScreen: React.FC = () => {
             }
           }
           currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else if (session.frequency === 'monthly') {
+        // Create monthly entries
+        const monthDay = session.monthDay || 1;
+        let currentDate = new Date(today);
+        
+        // Set to the specified day of the current month
+        currentDate.setDate(monthDay);
+        
+        // If the day has already passed this month, start from next month
+        if (currentDate < today) {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        
+        for (let i = 0; i < session.totalOccurrences; i++) {
+          // Check if we've passed the task end date
+          if (taskEndDate && currentDate > taskEndDate) {
+            break;
+          }
+          
+          try {
+            // Create a new date to avoid mutation issues
+            const scheduleDate = new Date(currentDate);
+            
+            // Handle months with fewer days than the specified day
+            if (scheduleDate.getDate() !== monthDay) {
+              // Set to last day of the previous month if day doesn't exist
+              scheduleDate.setDate(0);
+            }
+            
+            await createScheduleEntry(scheduleDate, session, goal);
+            createdCount++;
+          } catch (error) {
+            console.error(`Failed to create schedule entry for ${currentDate.toDateString()}:`, error);
+            errors.push({ date: currentDate.toDateString(), error });
+          }
+          
+          // Move to next month
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          currentDate.setDate(monthDay);
         }
       }
     }
@@ -274,7 +335,22 @@ export const DashboardScreen: React.FC = () => {
       category: goal.category,
       goalId: goal._id || goal.id,
       completed: false,
-      recurring: false // Added to match backend schema
+      recurring: false, // Added to match backend schema
+      tags: session.tags || [],
+      endDate: session.endDate || null,
+      recurrenceRule: session.frequency === 'daily' ? {
+        frequency: 'daily',
+        interval: session.interval || 1,
+        endDate: session.endDate
+      } : session.frequency === 'weekly' ? {
+        frequency: 'weekly',
+        daysOfWeek: session.days,
+        endDate: session.endDate
+      } : session.frequency === 'monthly' ? {
+        frequency: 'monthly',
+        dayOfMonth: session.monthDay || 1,
+        endDate: session.endDate
+      } : null
     };
 
     try {

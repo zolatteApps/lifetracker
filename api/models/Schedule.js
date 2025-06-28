@@ -34,6 +34,21 @@ const scheduleBlockSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  tags: [{
+    type: String,
+  }],
+  endDate: {
+    type: Date,
+    required: false,
+  },
+  recurrenceRule: {
+    type: Object,
+    required: false,
+  },
+  recurrenceId: {
+    type: String,
+    required: false,
+  },
 });
 
 const scheduleSchema = new mongoose.Schema({
