@@ -47,11 +47,53 @@ class GoalService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Request failed');
+      let errorMessage = 'Request failed';
+      try {
+        const errorText = await response.text();
+        if (errorText) {
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.error || errorJson.message || errorMessage;
+          } catch (parseError) {
+            errorMessage = errorText;
+          }
+        }
+      } catch (e) {
+        console.error('Error reading error response:', e);
+      }
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    // Check if response has content
+    const contentLength = response.headers.get('content-length');
+    const contentType = response.headers.get('content-type');
+    
+    // If no content or content-length is 0, return early
+    if (response.status === 204 || contentLength === '0') {
+      return;
+    }
+
+    // For DELETE requests, try to parse JSON but don't fail if it's empty
+    if (options.method === 'DELETE') {
+      try {
+        const text = await response.text();
+        if (text) {
+          return JSON.parse(text);
+        }
+        return;
+      } catch (e) {
+        // If parsing fails for DELETE, just return undefined
+        return;
+      }
+    }
+
+    // For other requests, parse JSON normally
+    try {
+      return await response.json();
+    } catch (e) {
+      console.warn('Failed to parse response as JSON:', e);
+      return;
+    }
   }
 
   async getGoals(filters?: { category?: string; completed?: boolean }): Promise<Goal[]> {
