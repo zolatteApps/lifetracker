@@ -63,24 +63,24 @@ export const GoalsScreenEnhanced: React.FC = () => {
       setGoals(fetchedGoals);
       await goalService.saveGoalsOffline(fetchedGoals);
       
-      // Fetch summary analytics - but don't fail if it errors
-      try {
-        const response = await fetch(`${API_URL}/api/goals/analytics/summary`, {
-          headers: {
-            'Authorization': `Bearer ${user?.token}`,
-          },
-        });
-        
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const analytics = await response.json();
-            setSummaryAnalytics(analytics);
-          }
-        }
-      } catch (analyticsError) {
-        console.log('Analytics fetch failed, but continuing:', analyticsError);
-      }
+      // Fetch summary analytics - commented out until Vercel issue is resolved
+      // try {
+      //   const response = await fetch(`${API_URL}/api/goals/analytics/summary`, {
+      //     headers: {
+      //       'Authorization': `Bearer ${user?.token}`,
+      //     },
+      //   });
+      //   
+      //   if (response.ok) {
+      //     const contentType = response.headers.get('content-type');
+      //     if (contentType && contentType.includes('application/json')) {
+      //       const analytics = await response.json();
+      //       setSummaryAnalytics(analytics);
+      //     }
+      //   }
+      // } catch (analyticsError) {
+      //   console.log('Analytics fetch failed, but continuing:', analyticsError);
+      // }
     } catch (error) {
       console.error('Error fetching goals:', error);
       const offlineGoals = await goalService.getOfflineGoals();
@@ -149,13 +149,20 @@ export const GoalsScreenEnhanced: React.FC = () => {
   const openGoalDetails = async (goal: GoalWithAnalytics, category: typeof categories[0]) => {
     setSelectedGoal(goal);
     setSelectedCategory(category);
-    // Try to fetch analytics but don't block navigation if it fails
-    try {
-      await fetchGoalAnalytics(goal._id || goal.id || '');
-    } catch (error) {
-      console.error('Analytics fetch failed, but continuing:', error);
-    }
-    navigation.navigate('GoalDetails' as never, { goal, category, analytics: selectedGoalAnalytics } as never);
+    
+    // Navigate immediately, don't wait for analytics
+    navigation.navigate('GoalDetails' as never, { 
+      goal, 
+      category, 
+      analytics: null // Pass null for now until analytics is fixed
+    } as never);
+    
+    // Fetch analytics in background (commented out until Vercel issue is resolved)
+    // try {
+    //   await fetchGoalAnalytics(goal._id || goal.id || '');
+    // } catch (error) {
+    //   console.error('Analytics fetch failed:', error);
+    // }
   };
 
   const openGoalModal = (category: typeof categories[0]) => {
