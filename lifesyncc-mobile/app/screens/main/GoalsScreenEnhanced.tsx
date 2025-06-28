@@ -101,8 +101,19 @@ export const GoalsScreenEnhanced: React.FC = () => {
       });
       
       if (response.ok) {
-        const analytics = await response.json();
-        setSelectedGoalAnalytics(analytics);
+        // Check if response has JSON content
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const analytics = await response.json();
+          setSelectedGoalAnalytics(analytics);
+        } else {
+          console.warn('Analytics endpoint returned non-JSON response');
+          setSelectedGoalAnalytics(null);
+        }
+      } else {
+        // Don't try to parse error response if it's not JSON
+        console.warn(`Analytics endpoint returned ${response.status}`);
+        setSelectedGoalAnalytics(null);
       }
     } catch (error) {
       console.error('Error fetching goal analytics:', error);
@@ -132,7 +143,12 @@ export const GoalsScreenEnhanced: React.FC = () => {
   const openGoalDetails = async (goal: GoalWithAnalytics, category: typeof categories[0]) => {
     setSelectedGoal(goal);
     setSelectedCategory(category);
-    await fetchGoalAnalytics(goal._id || goal.id || '');
+    // Try to fetch analytics but don't block navigation if it fails
+    try {
+      await fetchGoalAnalytics(goal._id || goal.id || '');
+    } catch (error) {
+      console.error('Analytics fetch failed, but continuing:', error);
+    }
     navigation.navigate('GoalDetails' as never, { goal, category, analytics: selectedGoalAnalytics } as never);
   };
 
