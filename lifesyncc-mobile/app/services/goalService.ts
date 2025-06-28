@@ -17,6 +17,8 @@ export interface Goal {
   completed: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  scheduleStartDate?: Date;
+  scheduleEndDate?: Date;
 }
 
 class GoalService {

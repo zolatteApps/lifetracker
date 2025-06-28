@@ -54,6 +54,12 @@ const goalSchema = new mongoose.Schema({
   dueDate: {
     type: Date,
   },
+  scheduleStartDate: {
+    type: Date,
+  },
+  scheduleEndDate: {
+    type: Date,
+  },
   completed: {
     type: Boolean,
     default: false,

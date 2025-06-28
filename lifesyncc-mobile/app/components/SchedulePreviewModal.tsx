@@ -8,10 +8,12 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { TagSelector } from './TagSelector';
 
 interface ScheduleSession {
   activity: string;
@@ -21,6 +23,10 @@ interface ScheduleSession {
   duration: number;
   days: string[];
   totalOccurrences: number;
+  interval?: number; // For daily frequency: every N days
+  monthDay?: number; // For monthly frequency: day of the month (1-31)
+  endDate?: string; // Optional end date for the task
+  tags?: string[]; // Tags for the task
 }
 
 interface SchedulePreviewModalProps {
@@ -80,6 +86,25 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedDetails, setEditedDetails] = useState<any>(null);
   const [showTimePicker, setShowTimePicker] = useState<number | null>(null);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTask, setNewTask] = useState<ScheduleSession>({
+    activity: '',
+    frequency: 'weekly',
+    daysPerWeek: 3,
+    time: '09:00',
+    duration: 60,
+    days: ['Mon', 'Wed', 'Fri'],
+    totalOccurrences: 36,
+    tags: [],
+  });
+  const [showEndDatePicker, setShowEndDatePicker] = useState<number | null>(null);
+  const [showTagSelector, setShowTagSelector] = useState<number | null>(null);
+  const [scheduleStartDate] = useState(new Date());
+  const [scheduleEndDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 84); // 12 weeks
+    return date;
+  });
 
   useEffect(() => {
     if (goalDetails && visible) {
@@ -102,6 +127,29 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const formatDate = (date: Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  };
+
+  const predefinedTags = {
+    priority: ['High Priority', 'Medium Priority', 'Low Priority'],
+    difficulty: ['Easy', 'Medium', 'Hard'],
+    location: ['Home', 'Gym', 'Outdoor', 'Office'],
+    type: ['Cardio', 'Strength', 'Flexibility', 'Mental', 'Study'],
+  };
+
+  const getTagColor = (tag: string) => {
+    if (tag.includes('High')) return '#EF4444';
+    if (tag.includes('Medium')) return '#F59E0B';
+    if (tag.includes('Low')) return '#10B981';
+    if (tag.includes('Easy')) return '#10B981';
+    if (tag.includes('Hard')) return '#EF4444';
+    if (tag.includes('Cardio')) return '#3B82F6';
+    if (tag.includes('Strength')) return '#8B5CF6';
+    return '#6B7280';
+  };
+
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
@@ -111,17 +159,109 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
 
   const formatFrequency = (session: ScheduleSession) => {
     if (session.frequency === 'daily') {
-      return session.daysPerWeek === 7 ? 'Every day' : `${session.daysPerWeek}x per week`;
+      const interval = session.interval || 1;
+      return interval === 1 ? 'Every day' : `Every ${interval} days`;
     }
     if (session.frequency === 'weekly') {
       return `Weekly on ${session.days.join(', ')}`;
     }
+    if (session.frequency === 'monthly') {
+      const day = session.monthDay || 1;
+      const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
+      return `Monthly on the ${day}${suffix}`;
+    }
     return 'Monthly';
   };
 
+  const generateScheduleSummary = (sessions: ScheduleSession[]) => {
+    if (sessions.length === 0) return 'No sessions scheduled';
+    
+    const session = sessions[0]; // Assuming single session for now
+    const totalWeeks = Math.ceil(session.totalOccurrences / (session.daysPerWeek || 1));
+    
+    if (session.frequency === 'daily') {
+      const interval = session.interval || 1;
+      if (interval === 1) {
+        return `${session.activity} every day for ${totalWeeks} weeks`;
+      } else {
+        return `${session.activity} every ${interval} days`;
+      }
+    } else if (session.frequency === 'weekly') {
+      const sessionsPerWeek = session.days.length;
+      return `${sessionsPerWeek} ${session.activity.toLowerCase()} sessions per week for ${totalWeeks} weeks`;
+    } else if (session.frequency === 'monthly') {
+      return `${session.activity} once per month for ${session.totalOccurrences} months`;
+    }
+    
+    return proposedSchedule.summary;
+  };
+
+  const calculateTotalSessions = (frequency: string, duration: number = 12, interval: number = 1, daysPerWeek: number = 0) => {
+    const totalDays = duration * 7; // Duration is in weeks
+    
+    if (frequency === 'daily') {
+      return Math.floor(totalDays / interval);
+    } else if (frequency === 'weekly') {
+      return duration * daysPerWeek;
+    } else if (frequency === 'monthly') {
+      return Math.floor(duration * 7 / 30); // Approximate months
+    }
+    
+    return 0;
+  };
+
+  const validateSchedule = () => {
+    for (const session of editedDetails.proposedSchedule.sessions) {
+      if (session.frequency === 'weekly' && session.days.length === 0) {
+        Alert.alert('Validation Error', 'Please select at least one day for weekly sessions');
+        return false;
+      }
+      if (session.frequency === 'daily' && (!session.interval || session.interval < 1)) {
+        Alert.alert('Validation Error', 'Please enter a valid interval for daily sessions');
+        return false;
+      }
+      if (session.frequency === 'monthly' && (!session.monthDay || session.monthDay < 1 || session.monthDay > 31)) {
+        Alert.alert('Validation Error', 'Please enter a valid day of month (1-31)');
+        return false;
+      }
+      if (!session.activity || session.activity.trim() === '') {
+        Alert.alert('Validation Error', 'Please enter an activity name');
+        return false;
+      }
+      if (!session.duration || session.duration < 1) {
+        Alert.alert('Validation Error', 'Please enter a valid duration');
+        return false;
+      }
+      // Validate task end date is not after schedule end date
+      if (session.endDate) {
+        const taskEndDate = new Date(session.endDate);
+        if (taskEndDate > scheduleEndDate) {
+          Alert.alert('Validation Error', 'Task end date cannot be after the schedule end date');
+          return false;
+        }
+        if (taskEndDate < scheduleStartDate) {
+          Alert.alert('Validation Error', 'Task end date cannot be before today');
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   const handleSaveChanges = () => {
+    if (!validateSchedule()) {
+      return;
+    }
+    
+    // Add schedule dates to the details
+    const updatedDetails = {
+      ...editedDetails,
+      scheduleStartDate: scheduleStartDate,
+      scheduleEndDate: scheduleEndDate
+    };
+    
     if (onUpdate) {
-      onUpdate(editedDetails);
+      onUpdate(updatedDetails);
     }
     setIsEditMode(false);
   };
@@ -144,6 +284,9 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     // Update daysPerWeek based on selected days
     session.daysPerWeek = session.days.length;
     
+    // Recalculate total sessions
+    session.totalOccurrences = calculateTotalSessions('weekly', 12, 1, session.days.length);
+    
     setEditedDetails(newDetails);
   };
 
@@ -154,6 +297,65 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     newDetails.proposedSchedule.sessions[sessionIndex].time = `${hours}:${minutes}`;
     setEditedDetails(newDetails);
     setShowTimePicker(null);
+  };
+
+  const deleteTask = (sessionIndex: number) => {
+    Alert.alert(
+      'Delete Task',
+      'Are you sure you want to delete this task?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const newDetails = { ...editedDetails };
+            newDetails.proposedSchedule.sessions.splice(sessionIndex, 1);
+            setEditedDetails(newDetails);
+          },
+        },
+      ]
+    );
+  };
+
+  const addNewTask = () => {
+    if (!newTask.activity.trim()) {
+      Alert.alert('Error', 'Please enter an activity name');
+      return;
+    }
+    
+    const newDetails = { ...editedDetails };
+    newDetails.proposedSchedule.sessions.push({ ...newTask });
+    setEditedDetails(newDetails);
+    setShowAddTask(false);
+    
+    // Reset new task form
+    setNewTask({
+      activity: '',
+      frequency: 'weekly',
+      daysPerWeek: 3,
+      time: '09:00',
+      duration: 60,
+      days: ['Mon', 'Wed', 'Fri'],
+      totalOccurrences: 36,
+      tags: [],
+    });
+  };
+
+  const toggleTag = (sessionIndex: number, tag: string) => {
+    const newDetails = { ...editedDetails };
+    const session = newDetails.proposedSchedule.sessions[sessionIndex];
+    
+    if (!session.tags) session.tags = [];
+    
+    const tagIndex = session.tags.indexOf(tag);
+    if (tagIndex > -1) {
+      session.tags.splice(tagIndex, 1);
+    } else {
+      session.tags.push(tag);
+    }
+    
+    setEditedDetails(newDetails);
   };
 
   if (!goalDetails || !goalDetails.proposedSchedule || !editedDetails) {
@@ -236,28 +438,76 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
 
             {/* Proposed Schedule */}
             <View style={styles.scheduleSection}>
-              <Text style={styles.sectionTitle}>Proposed Schedule</Text>
-              <Text style={styles.scheduleSummary}>{proposedSchedule.summary}</Text>
+              <View style={styles.scheduleTitleContainer}>
+                <Text style={styles.sectionTitle}>Proposed Schedule</Text>
+                <View style={styles.dateRangeContainer}>
+                  <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                  <Text style={styles.dateRangeText}>
+                    {formatDate(scheduleStartDate)} - {formatDate(scheduleEndDate)}
+                  </Text>
+                  <Text style={styles.durationText}>
+                    ({Math.round((scheduleEndDate.getTime() - scheduleStartDate.getTime()) / (1000 * 60 * 60 * 24 * 7))} weeks)
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.scheduleSummary}>
+                {isEditMode ? generateScheduleSummary(proposedSchedule.sessions) : proposedSchedule.summary}
+              </Text>
 
               {proposedSchedule.sessions.map((session: ScheduleSession, index: number) => (
                 <View key={index} style={styles.sessionCard}>
                   <View style={styles.sessionHeader}>
-                    <Ionicons name="calendar-outline" size={20} color={categoryColor} />
-                    {isEditMode ? (
-                      <TextInput
-                        style={styles.sessionActivityInput}
-                        value={session.activity}
-                        onChangeText={(text) => {
-                          const newDetails = { ...editedDetails };
-                          newDetails.proposedSchedule.sessions[index].activity = text;
-                          setEditedDetails(newDetails);
-                        }}
-                        placeholder="Activity name"
-                      />
-                    ) : (
-                      <Text style={styles.sessionActivity}>{session.activity}</Text>
+                    <View style={styles.sessionTitleRow}>
+                      <Ionicons name="calendar-outline" size={20} color={categoryColor} />
+                      {isEditMode ? (
+                        <TextInput
+                          style={styles.sessionActivityInput}
+                          value={session.activity}
+                          onChangeText={(text) => {
+                            const newDetails = { ...editedDetails };
+                            newDetails.proposedSchedule.sessions[index].activity = text;
+                            setEditedDetails(newDetails);
+                          }}
+                          placeholder="Activity name"
+                        />
+                      ) : (
+                        <Text style={styles.sessionActivity}>{session.activity}</Text>
+                      )}
+                    </View>
+                    {isEditMode && (
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => deleteTask(index)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#EF4444" />
+                      </TouchableOpacity>
                     )}
                   </View>
+                  
+                  {/* Tags Section */}
+                  {(session.tags && session.tags.length > 0) || isEditMode ? (
+                    <View style={styles.tagsContainer}>
+                      {session.tags?.map((tag, tagIndex) => (
+                        <TouchableOpacity
+                          key={tagIndex}
+                          style={[styles.tag, { backgroundColor: `${getTagColor(tag)}20` }]}
+                          onPress={() => isEditMode && toggleTag(index, tag)}
+                          disabled={!isEditMode}
+                        >
+                          <Text style={[styles.tagText, { color: getTagColor(tag) }]}>{tag}</Text>
+                        </TouchableOpacity>
+                      ))}
+                      {isEditMode && (
+                        <TouchableOpacity
+                          style={styles.addTagButton}
+                          onPress={() => setShowTagSelector(index)}
+                        >
+                          <Ionicons name="add" size={16} color="#6B7280" />
+                          <Text style={styles.addTagText}>Add Tag</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : null}
                   
                   <View style={styles.sessionDetails}>
                     <View style={styles.detailRow}>
@@ -301,7 +551,26 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                             selectedValue={session.frequency}
                             onValueChange={(value) => {
                               const newDetails = { ...editedDetails };
-                              newDetails.proposedSchedule.sessions[index].frequency = value;
+                              const session = newDetails.proposedSchedule.sessions[index];
+                              session.frequency = value;
+                              
+                              // Reset frequency-specific data when changing frequency
+                              if (value === 'daily') {
+                                session.interval = 1;
+                                session.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                session.daysPerWeek = 7;
+                                session.totalOccurrences = calculateTotalSessions('daily', 12, 1, 7);
+                              } else if (value === 'weekly') {
+                                session.days = session.days.length > 0 ? session.days : ['Mon', 'Wed', 'Fri'];
+                                session.daysPerWeek = session.days.length;
+                                session.totalOccurrences = calculateTotalSessions('weekly', 12, 1, session.days.length);
+                              } else if (value === 'monthly') {
+                                session.monthDay = 1;
+                                session.days = [];
+                                session.daysPerWeek = 0;
+                                session.totalOccurrences = calculateTotalSessions('monthly', 12, 1, 0);
+                              }
+                              
                               setEditedDetails(newDetails);
                             }}
                             style={styles.frequencyPicker}
@@ -316,7 +585,8 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                       )}
                     </View>
                     
-                    {session.days.length < 7 && (
+                    {/* Frequency-specific UI */}
+                    {session.frequency === 'weekly' && (
                       <View style={styles.daysContainer}>
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                           <TouchableOpacity
@@ -339,6 +609,91 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                             </Text>
                           </TouchableOpacity>
                         ))}
+                      </View>
+                    )}
+                    
+                    {session.frequency === 'daily' && isEditMode && (
+                      <View style={styles.dailyFrequencyContainer}>
+                        <Text style={styles.detailText}>Every </Text>
+                        <TextInput
+                          style={styles.dailyIntervalInput}
+                          value={(session.interval || 1).toString()}
+                          onChangeText={(text) => {
+                            const newDetails = { ...editedDetails };
+                            const interval = parseInt(text) || 1;
+                            newDetails.proposedSchedule.sessions[index].interval = interval;
+                            newDetails.proposedSchedule.sessions[index].totalOccurrences = calculateTotalSessions('daily', 12, interval, 7);
+                            setEditedDetails(newDetails);
+                          }}
+                          keyboardType="numeric"
+                          placeholder="1"
+                        />
+                        <Text style={styles.detailText}> day(s)</Text>
+                      </View>
+                    )}
+                    
+                    {session.frequency === 'monthly' && isEditMode && (
+                      <View style={styles.monthlyFrequencyContainer}>
+                        <Text style={styles.detailText}>Day </Text>
+                        <TextInput
+                          style={styles.monthlyDayInput}
+                          value={(session.monthDay || 1).toString()}
+                          onChangeText={(text) => {
+                            const day = parseInt(text) || 1;
+                            if (day >= 1 && day <= 31) {
+                              const newDetails = { ...editedDetails };
+                              newDetails.proposedSchedule.sessions[index].monthDay = day;
+                              setEditedDetails(newDetails);
+                            }
+                          }}
+                          keyboardType="numeric"
+                          placeholder="1"
+                        />
+                        <Text style={styles.detailText}> of each month</Text>
+                      </View>
+                    )}
+                    
+                    {/* End Date Section */}
+                    {isEditMode && (
+                      <View style={styles.endDateContainer}>
+                        <Ionicons name="calendar-outline" size={16} color="#666" />
+                        <Text style={styles.detailText}>End by: </Text>
+                        {session.endDate ? (
+                          <TouchableOpacity
+                            style={styles.endDateButton}
+                            onPress={() => setShowEndDatePicker(index)}
+                          >
+                            <Text style={styles.endDateText}>
+                              {formatDate(new Date(session.endDate))}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                const newDetails = { ...editedDetails };
+                                newDetails.proposedSchedule.sessions[index].endDate = undefined;
+                                setEditedDetails(newDetails);
+                              }}
+                            >
+                              <Ionicons name="close-circle" size={16} color="#EF4444" />
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.addEndDateButton}
+                            onPress={() => setShowEndDatePicker(index)}
+                          >
+                            <Ionicons name="add-circle-outline" size={16} color="#6B7280" />
+                            <Text style={styles.addEndDateText}>Set end date</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                    
+                    {!isEditMode && session.endDate && (
+                      <View style={styles.endDateContainer}>
+                        <Ionicons name="calendar-outline" size={16} color="#666" />
+                        <Text style={styles.detailText}>
+                          Ends: {formatDate(new Date(session.endDate))}
+                        </Text>
                       </View>
                     )}
                     
@@ -367,6 +722,85 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                   </View>
                 </View>
               ))}
+
+              {/* Add Task Button */}
+              {isEditMode && !showAddTask && (
+                <TouchableOpacity
+                  style={styles.addTaskButton}
+                  onPress={() => setShowAddTask(true)}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color={categoryColor} />
+                  <Text style={[styles.addTaskButtonText, { color: categoryColor }]}>
+                    Add Task
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Add Task Form */}
+              {showAddTask && (
+                <View style={styles.addTaskForm}>
+                  <Text style={styles.addTaskTitle}>New Task</Text>
+                  <TextInput
+                    style={styles.addTaskInput}
+                    placeholder="Activity name"
+                    value={newTask.activity}
+                    onChangeText={(text) => setNewTask({ ...newTask, activity: text })}
+                  />
+                  
+                  <View style={styles.addTaskRow}>
+                    <View style={styles.addTaskField}>
+                      <Text style={styles.addTaskLabel}>Time</Text>
+                      <TouchableOpacity
+                        style={styles.addTaskTimeButton}
+                        onPress={() => {
+                          // Time picker for new task
+                          Alert.alert('Time Picker', 'Time picker would appear here');
+                        }}
+                      >
+                        <Text>{formatTime(newTask.time)}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.addTaskField}>
+                      <Text style={styles.addTaskLabel}>Duration</Text>
+                      <TextInput
+                        style={styles.addTaskDurationInput}
+                        value={newTask.duration.toString()}
+                        onChangeText={(text) => setNewTask({ ...newTask, duration: parseInt(text) || 60 })}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                  
+                  <View style={styles.addTaskActions}>
+                    <TouchableOpacity
+                      style={styles.addTaskCancelButton}
+                      onPress={() => {
+                        setShowAddTask(false);
+                        setNewTask({
+                          activity: '',
+                          frequency: 'weekly',
+                          daysPerWeek: 3,
+                          time: '09:00',
+                          duration: 60,
+                          days: ['Mon', 'Wed', 'Fri'],
+                          totalOccurrences: 36,
+                          tags: [],
+                        });
+                      }}
+                    >
+                      <Text style={styles.addTaskCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.addTaskSaveButton, { backgroundColor: categoryColor }]}
+                      onPress={addNewTask}
+                    >
+                      <Text style={styles.addTaskSaveText}>Add Task</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               {/* Explanation */}
               <View style={styles.explanationCard}>
@@ -398,6 +832,13 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
               </>
             ) : (
               <>
+                <TouchableOpacity
+                  style={styles.previewButton}
+                  onPress={() => Alert.alert('Calendar Preview', 'Calendar preview would appear here')}
+                >
+                  <Ionicons name="calendar" size={20} color="#8B5CF6" />
+                </TouchableOpacity>
+                
                 <TouchableOpacity 
                   style={styles.modifyButton} 
                   onPress={() => setIsEditMode(true)}
@@ -445,6 +886,44 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
               setShowTimePicker(null);
             }
           }}
+        />
+      )}
+
+      {/* End Date Picker Modal */}
+      {showEndDatePicker !== null && (
+        <DateTimePicker
+          value={(() => {
+            const session = editedDetails.proposedSchedule.sessions[showEndDatePicker];
+            return session.endDate ? new Date(session.endDate) : new Date();
+          })()}
+          mode="date"
+          display="default"
+          minimumDate={new Date()}
+          maximumDate={scheduleEndDate}
+          onChange={(event, selectedDate) => {
+            if (event.type === 'set' && selectedDate) {
+              const newDetails = { ...editedDetails };
+              newDetails.proposedSchedule.sessions[showEndDatePicker].endDate = selectedDate.toISOString();
+              setEditedDetails(newDetails);
+            }
+            setShowEndDatePicker(null);
+          }}
+        />
+      )}
+
+      {/* Tag Selector Modal */}
+      {showTagSelector !== null && (
+        <TagSelector
+          visible={true}
+          selectedTags={editedDetails.proposedSchedule.sessions[showTagSelector].tags || []}
+          onClose={() => setShowTagSelector(null)}
+          onSelectTags={(tags) => {
+            const newDetails = { ...editedDetails };
+            newDetails.proposedSchedule.sessions[showTagSelector].tags = tags;
+            setEditedDetails(newDetails);
+            setShowTagSelector(null);
+          }}
+          predefinedTags={predefinedTags}
         />
       )}
     </Modal>
@@ -573,7 +1052,16 @@ const styles = StyleSheet.create({
   sessionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  sessionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  deleteButton: {
+    padding: 4,
   },
   sessionActivity: {
     fontSize: 16,
@@ -677,6 +1165,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 4,
   },
+  dailyFrequencyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  dailyIntervalInput: {
+    width: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 2,
+    textAlign: 'center',
+    marginHorizontal: 4,
+  },
+  monthlyFrequencyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  monthlyDayInput: {
+    width: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 2,
+    textAlign: 'center',
+    marginHorizontal: 4,
+  },
   explanationCard: {
     backgroundColor: '#fef3c7',
     borderRadius: 12,
@@ -765,5 +1281,193 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginLeft: 6,
+  },
+  scheduleTitleContainer: {
+    marginBottom: 8,
+  },
+  dateRangeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  dateRangeText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 6,
+    marginRight: 8,
+  },
+  durationText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+  },
+  tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  addTagButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  addTagText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  endDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  endDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  endDateText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginRight: 8,
+  },
+  addEndDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  addEndDateText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  addTaskButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  addTaskButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  addTaskForm: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  addTaskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  addTaskInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  addTaskRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  addTaskField: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  addTaskLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  addTaskTimeButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  addTaskDurationInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  addTaskActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  addTaskCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginRight: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  addTaskCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  addTaskSaveButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  addTaskSaveText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  previewButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
 });
