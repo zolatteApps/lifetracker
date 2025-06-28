@@ -12,8 +12,11 @@ import {
   Edit,
   Trash2,
   Save,
-  X
+  X,
+  ChevronRight,
+  TrendingUp
 } from 'lucide-react';
+import GoalDetailsModal from '../GoalDetails/GoalDetailsModal';
 
 const UserDetails: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -27,6 +30,8 @@ const UserDetails: React.FC = () => {
     isPhoneVerified: false,
     isOnboardingCompleted: false
   });
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -125,6 +130,11 @@ const UserDetails: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleGoalClick = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setShowGoalModal(true);
   };
 
   if (loading) {
@@ -345,10 +355,17 @@ const UserDetails: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {goals.map((goal) => (
-              <div key={goal.id} className="border rounded-lg p-4 hover:bg-gray-50">
+              <div 
+                key={goal.id || goal._id} 
+                className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-all hover:shadow-md group"
+                onClick={() => handleGoalClick(goal)}
+              >
                 <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{goal.title}</h3>
+                  <div className="flex-1">
+                    <div className="flex items-center">
+                      <h3 className="font-medium text-gray-900 group-hover:text-blue-600">{goal.title}</h3>
+                      <ChevronRight className="ml-2 h-4 w-4 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                     <p className="text-sm text-gray-600 mt-1">{goal.description}</p>
                   </div>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(goal.category)}`}>
@@ -357,19 +374,43 @@ const UserDetails: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>Type: {goal.type}</span>
+                    <span className="flex items-center">
+                      <Target size={14} className="mr-1" />
+                      {goal.type}
+                    </span>
+                    <span className="flex items-center">
+                      <TrendingUp size={14} className="mr-1" />
+                      {goal.progress || 0}%
+                    </span>
                     <span>Priority: {goal.priority}</span>
-                    <span>Progress: {goal.progress}%</span>
                   </div>
                   {goal.completed && (
                     <span className="text-green-600 text-sm font-medium">Completed</span>
                   )}
+                </div>
+                {/* Progress bar */}
+                <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${goal.progress || 0}%` }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Goal Details Modal */}
+      <GoalDetailsModal
+        goal={selectedGoal}
+        isOpen={showGoalModal}
+        onClose={() => {
+          setShowGoalModal(false);
+          setSelectedGoal(null);
+        }}
+        userId={userId || ''}
+      />
     </div>
   );
 };

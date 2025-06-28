@@ -1,5 +1,6 @@
 export interface Goal {
   id: string;
+  _id?: string;
   category: 'physical' | 'mental' | 'financial' | 'social';
   title: string;
   description: string;
@@ -10,8 +11,12 @@ export interface Goal {
   currentValue?: number;
   unit?: string;
   dueDate?: Date;
+  scheduleStartDate?: Date | string;
+  scheduleEndDate?: Date | string;
   completed: boolean;
-  createdAt: Date;
+  completedAt?: Date | string;
+  createdAt: Date | string;
+  updatedAt?: Date | string;
 }
 
 export interface CategoryGoals {
