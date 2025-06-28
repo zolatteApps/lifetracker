@@ -62,18 +62,23 @@ app.post('/api/auth/update-profile', wrapHandler(updateProfileRoute));
 app.get('/api/admin/stats', wrapHandler(adminStatsRoute));
 app.get('/api/admin/users', wrapHandler(adminUsersRoute));
 app.get('/api/admin/users/:userId', (req, res) => {
-  if (!req.query) req.query = {};
-  req.query.userId = req.params.userId;
+  // Create a new query object with userId
+  const newQuery = {};
+  for (let key in req.query) {
+    newQuery[key] = req.query[key];
+  }
+  newQuery.userId = req.params.userId;
+  req.query = newQuery;
+  console.log('Server.js - Setting userId:', req.params.userId);
+  console.log('Server.js - New query object:', req.query);
   wrapHandler(adminUserDetailRoute)(req, res);
 });
 app.put('/api/admin/users/:userId', (req, res) => {
-  if (!req.query) req.query = {};
-  req.query.userId = req.params.userId;
+  req.query = Object.assign({}, req.query, { userId: req.params.userId });
   wrapHandler(adminUserDetailRoute)(req, res);
 });
 app.delete('/api/admin/users/:userId', (req, res) => {
-  if (!req.query) req.query = {};
-  req.query.userId = req.params.userId;
+  req.query = Object.assign({}, req.query, { userId: req.params.userId });
   wrapHandler(adminUserDetailRoute)(req, res);
 });
 app.get('/api/admin/feedback', wrapHandler(adminFeedbackRoute));

@@ -126,6 +126,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     }
   }, [goalDetails, visible]);
 
+
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);
@@ -206,15 +207,51 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     return proposedSchedule.summary;
   };
 
-  const calculateTotalSessions = (frequency: string, duration: number = 12, interval: number = 1, daysPerWeek: number = 0) => {
-    const totalDays = duration * 7; // Duration is in weeks
+  const calculateTotalSessions = (
+    frequency: string,
+    startDate: Date,
+    endDate: Date,
+    interval: number = 1,
+    selectedDays: string[] = [],
+    monthDay?: number
+  ) => {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
     
     if (frequency === 'daily') {
+      // For daily frequency, count based on interval
       return Math.floor(totalDays / interval);
     } else if (frequency === 'weekly') {
-      return duration * daysPerWeek;
+      // For weekly frequency, count occurrences of selected days
+      let count = 0;
+      const currentDate = new Date(startDate);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      while (currentDate <= endDate) {
+        const dayName = dayNames[currentDate.getDay()];
+        if (selectedDays.includes(dayName)) {
+          count++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      return count;
     } else if (frequency === 'monthly') {
-      return Math.floor(duration * 7 / 30); // Approximate months
+      // For monthly frequency, count occurrences on specific day of month
+      let count = 0;
+      const currentDate = new Date(startDate);
+      const targetDay = monthDay || 1;
+      
+      while (currentDate <= endDate) {
+        if (currentDate.getDate() === targetDay) {
+          count++;
+        }
+        // Move to next month's target day
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        currentDate.setDate(targetDay);
+      }
+      
+      return count;
     }
     
     return 0;
@@ -270,17 +307,19 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       scheduleEndDate: scheduleEndDate
     };
     
-    if (onUpdate) {
-      onUpdate(updatedDetails);
-    }
-    
-    // If this is manual mode (creating a new goal), trigger accept with updated details
+    // Close modal and let parent handle success
     if (goalDetails?.isManualMode) {
-      setIsEditMode(false);
-      // Pass the updated details directly to onAccept
+      // For manual mode (creating a new goal), use onAccept
       onAccept(updatedDetails);
+      // Close the modal (this was missing!)
+      onCancel();
     } else {
-      setIsEditMode(false);
+      // For editing existing goal, use onUpdate
+      if (onUpdate) {
+        onUpdate(updatedDetails);
+      }
+      // Close the modal
+      onCancel();
     }
   };
 
@@ -302,8 +341,15 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     // Update daysPerWeek based on selected days
     session.daysPerWeek = session.days.length;
     
-    // Recalculate total sessions
-    session.totalOccurrences = calculateTotalSessions('weekly', 12, 1, session.days.length);
+    // Recalculate total sessions based on actual dates
+    const sessionEndDate = session.endDate ? new Date(session.endDate) : scheduleEndDate;
+    session.totalOccurrences = calculateTotalSessions(
+      'weekly',
+      scheduleStartDate,
+      sessionEndDate,
+      1,
+      session.days
+    );
     
     setEditedDetails(newDetails);
   };
@@ -394,12 +440,16 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       onRequestClose={onCancel}
     >
       <View style={styles.container}>
+        
         <View style={styles.modal}>
           <View style={styles.header}>
             <Text style={styles.title}>
               {isEditMode ? 'Edit Goal & Schedule' : 'Goal & Schedule Preview'}
             </Text>
-            <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
+            <TouchableOpacity 
+              onPress={onCancel} 
+              style={styles.closeButton}
+            >
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
@@ -595,7 +645,14 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                               updatedSession.frequency = 'weekly';
                               updatedSession.days = ['Mon', 'Wed', 'Fri'];
                               updatedSession.daysPerWeek = 3;
-                              updatedSession.totalOccurrences = calculateTotalSessions('weekly', 12, 1, 3);
+                              const sessionEndDate = updatedSession.endDate ? new Date(updatedSession.endDate) : scheduleEndDate;
+                              updatedSession.totalOccurrences = calculateTotalSessions(
+                                'weekly',
+                                scheduleStartDate,
+                                sessionEndDate,
+                                1,
+                                updatedSession.days
+                              );
                               setEditedDetails(newDetails);
                             }
                           }}
@@ -619,20 +676,41 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                               session.frequency = value;
                               
                               // Reset frequency-specific data when changing frequency
+                              const sessionEndDate = session.endDate ? new Date(session.endDate) : scheduleEndDate;
+                              
                               if (value === 'daily') {
                                 session.interval = 1;
                                 session.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                                 session.daysPerWeek = 7;
-                                session.totalOccurrences = calculateTotalSessions('daily', 12, 1, 7);
+                                session.totalOccurrences = calculateTotalSessions(
+                                  'daily',
+                                  scheduleStartDate,
+                                  sessionEndDate,
+                                  1,
+                                  session.days
+                                );
                               } else if (value === 'weekly') {
                                 session.days = session.days.length > 0 ? session.days : ['Mon', 'Wed', 'Fri'];
                                 session.daysPerWeek = session.days.length;
-                                session.totalOccurrences = calculateTotalSessions('weekly', 12, 1, session.days.length);
+                                session.totalOccurrences = calculateTotalSessions(
+                                  'weekly',
+                                  scheduleStartDate,
+                                  sessionEndDate,
+                                  1,
+                                  session.days
+                                );
                               } else if (value === 'monthly') {
                                 session.monthDay = 1;
                                 session.days = [];
                                 session.daysPerWeek = 0;
-                                session.totalOccurrences = calculateTotalSessions('monthly', 12, 1, 0);
+                                session.totalOccurrences = calculateTotalSessions(
+                                  'monthly',
+                                  scheduleStartDate,
+                                  sessionEndDate,
+                                  1,
+                                  [],
+                                  1
+                                );
                               }
                               
                               setEditedDetails(newDetails);
@@ -695,7 +773,16 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                             const newDetails = { ...editedDetails };
                             const interval = parseInt(text) || 1;
                             newDetails.proposedSchedule.sessions[index].interval = interval;
-                            newDetails.proposedSchedule.sessions[index].totalOccurrences = calculateTotalSessions('daily', 12, interval, 7);
+                            const sessionEndDate = newDetails.proposedSchedule.sessions[index].endDate 
+                              ? new Date(newDetails.proposedSchedule.sessions[index].endDate) 
+                              : scheduleEndDate;
+                            newDetails.proposedSchedule.sessions[index].totalOccurrences = calculateTotalSessions(
+                              'daily',
+                              scheduleStartDate,
+                              sessionEndDate,
+                              interval,
+                              newDetails.proposedSchedule.sessions[index].days
+                            );
                             setEditedDetails(newDetails);
                           }}
                           keyboardType="numeric"
@@ -791,6 +878,15 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                         ) : (
                           <Text style={styles.totalText}>
                             Total: {session.totalOccurrences} sessions
+                            {session.frequency === 'weekly' && (() => {
+                              const endDate = session.endDate ? new Date(session.endDate) : scheduleEndDate;
+                              const weeks = Math.ceil((endDate.getTime() - scheduleStartDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+                              return (
+                                <Text style={styles.calculationBreakdown}>
+                                  {' '}({weeks} weeks × {session.days.length} days/week)
+                                </Text>
+                              );
+                            })()}
                           </Text>
                         )}
                       </View>
@@ -870,7 +966,13 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                           updated.frequency = 'weekly';
                           updated.days = ['Mon', 'Wed', 'Fri'];
                           updated.daysPerWeek = 3;
-                          updated.totalOccurrences = 36;
+                          updated.totalOccurrences = calculateTotalSessions(
+                            'weekly',
+                            scheduleStartDate,
+                            scheduleEndDate,
+                            1,
+                            ['Mon', 'Wed', 'Fri']
+                          );
                         } else {
                           // Switching to one-time - set date to today
                           updated.date = new Date().toISOString();
@@ -898,16 +1000,35 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                                 updated.interval = 1;
                                 updated.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                                 updated.daysPerWeek = 7;
-                                updated.totalOccurrences = calculateTotalSessions('daily', 12, 1, 7);
+                                updated.totalOccurrences = calculateTotalSessions(
+                                  'daily',
+                                  scheduleStartDate,
+                                  scheduleEndDate,
+                                  1,
+                                  updated.days
+                                );
                               } else if (value === 'weekly') {
                                 updated.days = ['Mon', 'Wed', 'Fri'];
                                 updated.daysPerWeek = 3;
-                                updated.totalOccurrences = calculateTotalSessions('weekly', 12, 1, 3);
+                                updated.totalOccurrences = calculateTotalSessions(
+                                  'weekly',
+                                  scheduleStartDate,
+                                  scheduleEndDate,
+                                  1,
+                                  updated.days
+                                );
                               } else if (value === 'monthly') {
                                 updated.monthDay = 1;
                                 updated.days = [];
                                 updated.daysPerWeek = 0;
-                                updated.totalOccurrences = calculateTotalSessions('monthly', 12, 1, 0);
+                                updated.totalOccurrences = calculateTotalSessions(
+                                  'monthly',
+                                  scheduleStartDate,
+                                  scheduleEndDate,
+                                  1,
+                                  [],
+                                  1
+                                );
                               }
                               setNewTask(updated);
                             }}
@@ -1223,11 +1344,38 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
             if (event.type === 'set' && selectedDate) {
               if (showEndDatePicker === -1) {
                 // New task
-                setNewTask({ ...newTask, endDate: selectedDate.toISOString() });
+                const updated = { ...newTask, endDate: selectedDate.toISOString() };
+                // Recalculate sessions for new task
+                if (updated.repeat) {
+                  updated.totalOccurrences = calculateTotalSessions(
+                    updated.frequency,
+                    scheduleStartDate,
+                    selectedDate,
+                    updated.interval || 1,
+                    updated.days,
+                    updated.monthDay
+                  );
+                }
+                setNewTask(updated);
               } else {
                 // Existing task
                 const newDetails = { ...editedDetails };
-                newDetails.proposedSchedule.sessions[showEndDatePicker].endDate = selectedDate.toISOString();
+                const sessionIndex = showEndDatePicker;
+                newDetails.proposedSchedule.sessions[sessionIndex].endDate = selectedDate.toISOString();
+                
+                // Recalculate total sessions when end date changes
+                const session = newDetails.proposedSchedule.sessions[sessionIndex];
+                if (session.repeat !== false) {
+                  session.totalOccurrences = calculateTotalSessions(
+                    session.frequency,
+                    scheduleStartDate,
+                    selectedDate,
+                    session.interval || 1,
+                    session.days,
+                    session.monthDay
+                  );
+                }
+                
                 setEditedDetails(newDetails);
               }
             }
@@ -1515,6 +1663,11 @@ const styles = StyleSheet.create({
   totalText: {
     fontSize: 14,
     color: '#6b7280',
+    fontStyle: 'italic',
+  },
+  calculationBreakdown: {
+    fontSize: 12,
+    color: '#9CA3AF',
     fontStyle: 'italic',
   },
   totalEditContainer: {

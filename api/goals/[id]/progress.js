@@ -42,35 +42,23 @@ const handler = async (req, res) => {
       id: goal._id,
       type: goal.type,
       progress: goal.progress,
-      currentValue: goal.currentValue,
-      targetValue: goal.targetValue,
+      completed: goal.completed,
       hasAnalytics: !!goal.analytics,
       hasProgressHistory: !!goal.progressHistory,
       analyticsStructure: goal.analytics ? Object.keys(goal.analytics) : 'none',
       progressHistoryLength: goal.progressHistory ? goal.progressHistory.length : 0
     });
 
-    const { currentValue, progress } = req.body;
+    const { progress } = req.body;
 
     // Prepare update object
     const updateData = {};
     let newProgress = goal.progress || 0;
 
-    // Calculate new progress based on goal type
-    if (goal.type === 'numeric' || goal.type === 'habit') {
-      if (currentValue !== undefined) {
-        updateData.currentValue = currentValue;
-        // Calculate progress
-        if (goal.targetValue && goal.targetValue > 0) {
-          newProgress = Math.min(Math.round((currentValue / goal.targetValue) * 100), 100);
-          updateData.progress = newProgress;
-        }
-      }
-    } else if (goal.type === 'milestone') {
-      if (progress !== undefined) {
-        newProgress = Math.min(Math.max(progress, 0), 100);
-        updateData.progress = newProgress;
-      }
+    // For schedule-focused approach, we only track progress percentage
+    if (progress !== undefined) {
+      newProgress = Math.min(Math.max(progress, 0), 100);
+      updateData.progress = newProgress;
     }
 
     console.log('Calculated new progress:', newProgress);
@@ -93,7 +81,7 @@ const handler = async (req, res) => {
     try {
       const minimalUpdate = await Goal.findByIdAndUpdate(
         id,
-        { $set: { progress: newProgress, currentValue: updateData.currentValue || goal.currentValue } },
+        { $set: { progress: newProgress } },
         { new: true, runValidators: false }
       );
       console.log('Minimal update successful');
@@ -174,7 +162,7 @@ const handler = async (req, res) => {
     console.log('Final updated goal:', {
       id: updatedGoal._id,
       progress: updatedGoal.progress,
-      currentValue: updatedGoal.currentValue,
+      completed: updatedGoal.completed,
       analyticsUpdated: updatedGoal.analytics?.lastProgressUpdate,
       historyLength: updatedGoal.progressHistory?.length
     });
