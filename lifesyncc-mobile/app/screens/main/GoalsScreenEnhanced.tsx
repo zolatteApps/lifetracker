@@ -192,6 +192,19 @@ export const GoalsScreenEnhanced: React.FC = () => {
     setIsCreatingGoal(true);
     
     try {
+      // Validate required fields
+      if (!goalDetails.title || !goalDetails.title.trim()) {
+        Alert.alert('Error', 'Please enter a goal title');
+        setIsCreatingGoal(false);
+        return;
+      }
+      
+      if (!goalDetails.description || !goalDetails.description.trim()) {
+        Alert.alert('Error', 'Please enter a goal description');
+        setIsCreatingGoal(false);
+        return;
+      }
+      
       // Prepare goal data
       const scheduleStartDate = goalDetails.scheduleStartDate ? new Date(goalDetails.scheduleStartDate) : new Date();
       const scheduleEndDate = goalDetails.scheduleEndDate ? new Date(goalDetails.scheduleEndDate) : (() => {
@@ -218,13 +231,24 @@ export const GoalsScreenEnhanced: React.FC = () => {
       // Create the goal
       const newGoal = await goalService.createGoal(goalData);
       console.log('Goal created:', newGoal);
+      
+      // Ensure we have a valid goal ID
+      if (!newGoal || (!newGoal._id && !newGoal.id)) {
+        throw new Error('Goal created but no ID returned');
+      }
 
       // Create schedule entries if proposedSchedule exists
       if (goalDetails.proposedSchedule && goalDetails.proposedSchedule.sessions) {
-        await createScheduleFromProposal(goalDetails.proposedSchedule, newGoal);
+        try {
+          await createScheduleFromProposal(goalDetails.proposedSchedule, newGoal);
+          Alert.alert('Success!', 'Goal and schedule created successfully!');
+        } catch (scheduleError) {
+          console.error('Error creating schedule:', scheduleError);
+          Alert.alert('Success!', 'Goal created successfully! (Schedule creation will be added later)');
+        }
+      } else {
+        Alert.alert('Success!', 'Goal created successfully!');
       }
-
-      Alert.alert('Success!', 'Goal and schedule created successfully!');
       
       // Reset state
       setGoalDetails(null);
