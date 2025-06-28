@@ -218,7 +218,21 @@ export const DashboardScreen: React.FC = () => {
     let errors = [];
     
     for (const session of proposedSchedule.sessions) {
-      // Determine the end date for this task
+      // Check if this is a one-time task
+      if (session.repeat === false) {
+        // Create a single entry for one-time task
+        const taskDate = session.date ? new Date(session.date) : today;
+        try {
+          await createScheduleEntry(taskDate, session, goal);
+          createdCount++;
+        } catch (error) {
+          console.error(`Failed to create one-time schedule entry for ${taskDate.toDateString()}:`, error);
+          errors.push({ date: taskDate.toDateString(), error });
+        }
+        continue; // Skip to next session
+      }
+      
+      // Determine the end date for recurring tasks
       const taskEndDate = session.endDate ? new Date(session.endDate) : null;
       
       // Create schedule entries based on frequency
@@ -335,18 +349,18 @@ export const DashboardScreen: React.FC = () => {
       category: goal.category,
       goalId: goal._id || goal.id,
       completed: false,
-      recurring: false, // Added to match backend schema
+      recurring: session.repeat !== false, // Set based on repeat field
       tags: session.tags || [],
       endDate: session.endDate || null,
-      recurrenceRule: session.frequency === 'daily' ? {
+      recurrenceRule: session.repeat !== false && session.frequency === 'daily' ? {
         frequency: 'daily',
         interval: session.interval || 1,
         endDate: session.endDate
-      } : session.frequency === 'weekly' ? {
+      } : session.repeat !== false && session.frequency === 'weekly' ? {
         frequency: 'weekly',
         daysOfWeek: session.days,
         endDate: session.endDate
-      } : session.frequency === 'monthly' ? {
+      } : session.repeat !== false && session.frequency === 'monthly' ? {
         frequency: 'monthly',
         dayOfMonth: session.monthDay || 1,
         endDate: session.endDate
