@@ -890,13 +890,16 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                                 updated.interval = 1;
                                 updated.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                                 updated.daysPerWeek = 7;
+                                updated.totalOccurrences = calculateTotalSessions('daily', 12, 1, 7);
                               } else if (value === 'weekly') {
                                 updated.days = ['Mon', 'Wed', 'Fri'];
                                 updated.daysPerWeek = 3;
+                                updated.totalOccurrences = calculateTotalSessions('weekly', 12, 1, 3);
                               } else if (value === 'monthly') {
                                 updated.monthDay = 1;
                                 updated.days = [];
                                 updated.daysPerWeek = 0;
+                                updated.totalOccurrences = calculateTotalSessions('monthly', 12, 1, 0);
                               }
                               setNewTask(updated);
                             }}
@@ -910,6 +913,25 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                       </View>
                       
                       {/* Frequency-specific options */}
+                      {newTask.frequency === 'daily' && (
+                        <View style={styles.dailyFrequencyContainer}>
+                          <Text style={styles.detailText}>Every </Text>
+                          <TextInput
+                            style={styles.dailyIntervalInput}
+                            value={(newTask.interval || 1).toString()}
+                            onChangeText={(text) => {
+                              const interval = parseInt(text) || 1;
+                              const updated = { ...newTask, interval };
+                              updated.totalOccurrences = calculateTotalSessions('daily', 12, interval, 7);
+                              setNewTask(updated);
+                            }}
+                            keyboardType="numeric"
+                            placeholder="1"
+                          />
+                          <Text style={styles.detailText}> day(s)</Text>
+                        </View>
+                      )}
+                      
                       {newTask.frequency === 'weekly' && (
                         <View style={styles.daysContainer}>
                           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
@@ -923,6 +945,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                                   updated.days.push(day);
                                 }
                                 updated.daysPerWeek = updated.days.length;
+                                updated.totalOccurrences = calculateTotalSessions('weekly', 12, 1, updated.days.length);
                                 setNewTask(updated);
                               }}
                               style={[
@@ -943,6 +966,98 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
                           ))}
                         </View>
                       )}
+                      
+                      {newTask.frequency === 'monthly' && (
+                        <View style={styles.monthlyFrequencyContainer}>
+                          <Text style={styles.detailText}>Day </Text>
+                          <TextInput
+                            style={styles.monthlyDayInput}
+                            value={(newTask.monthDay || 1).toString()}
+                            onChangeText={(text) => {
+                              const day = parseInt(text) || 1;
+                              if (day >= 1 && day <= 31) {
+                                const updated = { ...newTask, monthDay: day };
+                                updated.totalOccurrences = calculateTotalSessions('monthly', 12, 1, 0);
+                                setNewTask(updated);
+                              }
+                            }}
+                            keyboardType="numeric"
+                            placeholder="1"
+                          />
+                          <Text style={styles.detailText}> of each month</Text>
+                        </View>
+                      )}
+                      
+                      {/* Tags Section */}
+                      <View style={styles.addTaskTagsContainer}>
+                        <Text style={styles.addTaskLabel}>Tags</Text>
+                        <View style={styles.tagsContainer}>
+                          {newTask.tags?.map((tag, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={[styles.tag, { backgroundColor: `${getTagColor(tag)}20` }]}
+                              onPress={() => {
+                                const updated = { ...newTask };
+                                updated.tags = updated.tags?.filter((_, i) => i !== index);
+                                setNewTask(updated);
+                              }}
+                            >
+                              <Text style={[styles.tagText, { color: getTagColor(tag) }]}>{tag}</Text>
+                              <Ionicons name="close-circle" size={16} color={getTagColor(tag)} />
+                            </TouchableOpacity>
+                          ))}
+                          <TouchableOpacity
+                            style={styles.addTagButton}
+                            onPress={() => {
+                              // For now, cycle through some predefined tags
+                              const availableTags = ['High Priority', 'Cardio', 'Home', 'Easy'];
+                              const currentTags = newTask.tags || [];
+                              const nextTag = availableTags.find(tag => !currentTags.includes(tag));
+                              if (nextTag) {
+                                setNewTask({ ...newTask, tags: [...currentTags, nextTag] });
+                              }
+                            }}
+                          >
+                            <Ionicons name="add" size={16} color="#6B7280" />
+                            <Text style={styles.addTagText}>Add Tag</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      
+                      {/* End Date Section */}
+                      <View style={styles.addTaskEndDateContainer}>
+                        <Text style={styles.addTaskLabel}>End by (optional)</Text>
+                        {newTask.endDate ? (
+                          <TouchableOpacity
+                            style={styles.endDateButton}
+                            onPress={() => setShowEndDatePicker(-1)} // -1 for new task
+                          >
+                            <Text style={styles.endDateText}>
+                              {formatDate(new Date(newTask.endDate))}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => setNewTask({ ...newTask, endDate: undefined })}
+                            >
+                              <Ionicons name="close-circle" size={16} color="#EF4444" />
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.addEndDateButton}
+                            onPress={() => setShowEndDatePicker(-1)} // -1 for new task
+                          >
+                            <Ionicons name="add-circle-outline" size={16} color="#6B7280" />
+                            <Text style={styles.addEndDateText}>Set end date</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      
+                      {/* Total Sessions */}
+                      <View style={styles.totalRow}>
+                        <Text style={styles.totalText}>
+                          Total: {newTask.totalOccurrences} sessions
+                        </Text>
+                      </View>
                     </>
                   ) : (
                     /* One-time task date picker */
@@ -1083,8 +1198,14 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       {showEndDatePicker !== null && (
         <DateTimePicker
           value={(() => {
-            const session = editedDetails.proposedSchedule.sessions[showEndDatePicker];
-            return session.endDate ? new Date(session.endDate) : new Date();
+            if (showEndDatePicker === -1) {
+              // New task
+              return newTask.endDate ? new Date(newTask.endDate) : new Date();
+            } else {
+              // Existing task
+              const session = editedDetails.proposedSchedule.sessions[showEndDatePicker];
+              return session.endDate ? new Date(session.endDate) : new Date();
+            }
           })()}
           mode="date"
           display="default"
@@ -1092,9 +1213,15 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
           maximumDate={scheduleEndDate}
           onChange={(event, selectedDate) => {
             if (event.type === 'set' && selectedDate) {
-              const newDetails = { ...editedDetails };
-              newDetails.proposedSchedule.sessions[showEndDatePicker].endDate = selectedDate.toISOString();
-              setEditedDetails(newDetails);
+              if (showEndDatePicker === -1) {
+                // New task
+                setNewTask({ ...newTask, endDate: selectedDate.toISOString() });
+              } else {
+                // Existing task
+                const newDetails = { ...editedDetails };
+                newDetails.proposedSchedule.sessions[showEndDatePicker].endDate = selectedDate.toISOString();
+                setEditedDetails(newDetails);
+              }
             }
             setShowEndDatePicker(null);
           }}
@@ -1761,5 +1888,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  addTaskTagsContainer: {
+    marginBottom: 16,
+  },
+  addTaskEndDateContainer: {
+    marginBottom: 16,
   },
 });
