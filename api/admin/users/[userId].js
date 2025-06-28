@@ -18,7 +18,12 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { userId } = req.query;
+  console.log('Request query:', req.query);
+  console.log('Request params:', req.params);
+  
+  // Try to get userId from multiple sources
+  const userId = req.query.userId || req.params.userId || (req.params && req.params[0]);
+  console.log('Extracted userId:', userId);
 
   try {
     // Connect to database first
@@ -44,9 +49,11 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       // Get user details
+      console.log('Looking for user with ID:', userId);
       const user = await User.findById(userId).select('-password');
       
       if (!user) {
+        console.log('User not found for ID:', userId);
         return res.status(404).json({ error: 'User not found' });
       }
 

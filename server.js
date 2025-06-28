@@ -30,8 +30,8 @@ const adminFeedbackDetailRoute = require('./api/admin/feedback/[id]');
 const goalsRoute = require('./api/goals/index');
 const goalDetailRoute = require('./api/goals/[id]');
 const goalProgressRoute = require('./api/goals/[id]/progress');
-const goalAnalyticsRoute = require('./pages/api/goals/[id]/analytics');
-const goalAnalyticsSummaryRoute = require('./pages/api/goals/analytics/summary');
+// const goalAnalyticsRoute = require('./pages/api/goals/[id]/analytics');
+// const goalAnalyticsSummaryRoute = require('./pages/api/goals/analytics/summary');
 
 // Feedback routes
 const feedbackRoute = require('./api/feedback/index');
@@ -62,18 +62,23 @@ app.post('/api/auth/update-profile', wrapHandler(updateProfileRoute));
 app.get('/api/admin/stats', wrapHandler(adminStatsRoute));
 app.get('/api/admin/users', wrapHandler(adminUsersRoute));
 app.get('/api/admin/users/:userId', (req, res) => {
-  if (!req.query) req.query = {};
-  req.query.userId = req.params.userId;
+  // Create a new query object with userId
+  const newQuery = {};
+  for (let key in req.query) {
+    newQuery[key] = req.query[key];
+  }
+  newQuery.userId = req.params.userId;
+  req.query = newQuery;
+  console.log('Server.js - Setting userId:', req.params.userId);
+  console.log('Server.js - New query object:', req.query);
   wrapHandler(adminUserDetailRoute)(req, res);
 });
 app.put('/api/admin/users/:userId', (req, res) => {
-  if (!req.query) req.query = {};
-  req.query.userId = req.params.userId;
+  req.query = Object.assign({}, req.query, { userId: req.params.userId });
   wrapHandler(adminUserDetailRoute)(req, res);
 });
 app.delete('/api/admin/users/:userId', (req, res) => {
-  if (!req.query) req.query = {};
-  req.query.userId = req.params.userId;
+  req.query = Object.assign({}, req.query, { userId: req.params.userId });
   wrapHandler(adminUserDetailRoute)(req, res);
 });
 app.get('/api/admin/feedback', wrapHandler(adminFeedbackRoute));
@@ -105,11 +110,11 @@ app.put('/api/goals/:id/progress', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalProgressRoute)(req, res);
 });
-app.get('/api/goals/:id/analytics', (req, res) => {
-  req.query.id = req.params.id;
-  wrapHandler(goalAnalyticsRoute)(req, res);
-});
-app.get('/api/goals/analytics/summary', wrapHandler(goalAnalyticsSummaryRoute));
+// app.get('/api/goals/:id/analytics', (req, res) => {
+//   req.query.id = req.params.id;
+//   wrapHandler(goalAnalyticsRoute)(req, res);
+// });
+// app.get('/api/goals/analytics/summary', wrapHandler(goalAnalyticsSummaryRoute));
 
 // Feedback routes
 app.get('/api/feedback', wrapHandler(feedbackRoute));
