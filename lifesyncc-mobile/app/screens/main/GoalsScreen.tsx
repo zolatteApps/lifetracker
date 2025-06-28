@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import goalService, { Goal } from '../../services/goalService';
 import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
-import { GoalCreationModal } from '../../components/GoalCreationModal';
+import { SchedulePreviewModal } from '../../components/SchedulePreviewModal';
 import { GoalProgressModal } from '../../components/GoalProgressModal';
 import scheduleService from '../../services/schedule.service';
 
@@ -37,6 +37,8 @@ export const GoalsScreen: React.FC = () => {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [modalPrefillData, setModalPrefillData] = useState<any>(null);
+  const [goalDetails, setGoalDetails] = useState<any>(null);
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false);
 
   const fetchGoals = async () => {
     try {
@@ -206,7 +208,39 @@ export const GoalsScreen: React.FC = () => {
 
   const openGoalModal = (category: typeof categories[0]) => {
     setSelectedCategory(category);
-    setModalPrefillData(null); // Clear any previous prefill data
+    
+    // Create default goal structure for manual mode
+    const defaultGoalDetails = {
+      title: '',
+      category: category.key,
+      description: '',
+      type: 'milestone' as const,
+      priority: 'medium' as const,
+      proposedSchedule: {
+        summary: 'Custom schedule',
+        explanation: 'Create your own schedule',
+        sessions: [{
+          activity: 'New Activity',
+          frequency: 'weekly' as const,
+          daysPerWeek: 3,
+          time: '19:00',
+          duration: 60,
+          days: ['Mon', 'Wed', 'Fri'],
+          totalOccurrences: 12,
+          repeat: true,
+          tags: []
+        }]
+      },
+      isManualMode: true,
+      scheduleStartDate: new Date().toISOString(),
+      scheduleEndDate: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 84); // 12 weeks default
+        return date.toISOString();
+      })()
+    };
+    
+    setGoalDetails(defaultGoalDetails);
     setModalVisible(true);
   };
 
@@ -214,6 +248,75 @@ export const GoalsScreen: React.FC = () => {
     setSelectedGoal(goal);
     setSelectedCategory(category);
     setProgressModalVisible(true);
+  };
+
+  const handleAcceptSchedule = async () => {
+    if (!goalDetails) return;
+    
+    setIsCreatingGoal(true);
+    
+    try {
+      // Prepare goal data
+      const scheduleStartDate = goalDetails.scheduleStartDate ? new Date(goalDetails.scheduleStartDate) : new Date();
+      const scheduleEndDate = goalDetails.scheduleEndDate ? new Date(goalDetails.scheduleEndDate) : (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 84); // 12 weeks default
+        return date;
+      })();
+      
+      const goalData = {
+        category: goalDetails.category,
+        title: goalDetails.title,
+        description: goalDetails.description,
+        type: goalDetails.type,
+        priority: goalDetails.priority,
+        targetValue: goalDetails.targetValue,
+        currentValue: goalDetails.currentValue || 0,
+        unit: goalDetails.unit || '',
+        dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
+        completed: false,
+        scheduleStartDate: scheduleStartDate,
+        scheduleEndDate: scheduleEndDate
+      };
+
+      // Create the goal
+      const newGoal = await goalService.createGoal(goalData);
+      console.log('Goal created:', newGoal);
+
+      // Create schedule entries
+      if (goalDetails.proposedSchedule) {
+        await createScheduleFromProposal(goalDetails.proposedSchedule, newGoal);
+      }
+
+      Alert.alert('Success!', 'Goal and schedule created successfully!');
+      
+      // Reset state
+      setGoalDetails(null);
+      setModalVisible(false);
+      setSelectedCategory(null);
+      
+      // Refresh goals
+      await fetchGoals();
+    } catch (error) {
+      console.error('Error creating goal:', error);
+      Alert.alert('Error', 'Failed to create goal. Please try again.');
+    } finally {
+      setIsCreatingGoal(false);
+    }
+  };
+
+  const handleModifySchedule = () => {
+    // This is handled by the SchedulePreviewModal in edit mode
+  };
+
+  const handleCancelSchedule = () => {
+    setModalVisible(false);
+    setGoalDetails(null);
+    setSelectedCategory(null);
+  };
+
+  const handleUpdateGoalDetails = (updatedDetails: any) => {
+    setGoalDetails(updatedDetails);
   };
 
   const updateGoalProgress = async (goalId: string, newValue: number) => {
@@ -461,17 +564,14 @@ export const GoalsScreen: React.FC = () => {
 
       {selectedCategory && (
         <>
-          <GoalCreationModal
+          <SchedulePreviewModal
             visible={modalVisible}
-            category={selectedCategory.key}
-            categoryColor={selectedCategory.color}
-            onClose={() => {
-              setModalVisible(false);
-              setSelectedCategory(null);
-              setModalPrefillData(null);
-            }}
-            onSave={handleCreateGoal}
-            prefillData={modalPrefillData}
+            goalDetails={goalDetails}
+            onAccept={handleAcceptSchedule}
+            onModify={handleModifySchedule}
+            onCancel={handleCancelSchedule}
+            onUpdate={handleUpdateGoalDetails}
+            loading={isCreatingGoal}
           />
           <GoalProgressModal
             visible={progressModalVisible}

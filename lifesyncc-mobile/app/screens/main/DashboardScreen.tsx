@@ -102,27 +102,35 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
     
-    // Create default goal structure
+    // Create default goal structure for manual mode
     const defaultGoalDetails = {
       title: goalText.trim(),
       category: 'physical',
       description: '',
-      type: 'milestone',
-      priority: 'medium',
+      type: 'milestone' as const,
+      priority: 'medium' as const,
       proposedSchedule: {
         summary: 'Custom schedule',
         explanation: 'Create your own schedule',
         sessions: [{
           activity: goalText.trim(),
-          frequency: 'weekly',
-          daysPerWeek: 1,
+          frequency: 'weekly' as const,
+          daysPerWeek: 3,
           time: '19:00',
           duration: 60,
-          days: ['Mon'],
-          totalOccurrences: 4
+          days: ['Mon', 'Wed', 'Fri'],
+          totalOccurrences: 12,
+          repeat: true,
+          tags: []
         }]
       },
-      isManualMode: true
+      isManualMode: true,
+      scheduleStartDate: new Date().toISOString(),
+      scheduleEndDate: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 84); // 12 weeks default
+        return date.toISOString();
+      })()
     };
 
     setGoalDetails(defaultGoalDetails);
