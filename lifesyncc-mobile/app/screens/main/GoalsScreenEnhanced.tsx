@@ -220,21 +220,38 @@ export const GoalsScreenEnhanced: React.FC = () => {
     const detailsToUse = updatedDetails || goalDetails;
     if (!detailsToUse) return;
     
+    // Validate required fields before showing the alert
+    if (!detailsToUse.title || !detailsToUse.title.trim()) {
+      Alert.alert('Error', 'Please enter a goal title');
+      return;
+    }
+    
+    if (!detailsToUse.description || !detailsToUse.description.trim()) {
+      Alert.alert('Error', 'Please enter a goal description');
+      return;
+    }
+    
     setIsCreatingGoal(true);
     
+    // Close modal immediately
+    setModalVisible(false);
+    setGoalDetails(null);
+    setSelectedCategory(null);
+    
+    // Show intermediate creating popup
+    Alert.alert(
+      'Creating Schedule',
+      'Your schedule is being created in the background, you can proceed using the app until it is done.',
+      [
+        {
+          text: 'OK',
+          style: 'default'
+        }
+      ],
+      { cancelable: true }
+    );
+    
     try {
-      // Validate required fields
-      if (!detailsToUse.title || !detailsToUse.title.trim()) {
-        Alert.alert('Error', 'Please enter a goal title');
-        setIsCreatingGoal(false);
-        return;
-      }
-      
-      if (!detailsToUse.description || !detailsToUse.description.trim()) {
-        Alert.alert('Error', 'Please enter a goal description');
-        setIsCreatingGoal(false);
-        return;
-      }
       
       // Prepare goal data
       const scheduleStartDate = detailsToUse.scheduleStartDate ? new Date(detailsToUse.scheduleStartDate) : new Date();
@@ -272,19 +289,12 @@ export const GoalsScreenEnhanced: React.FC = () => {
       if (detailsToUse.proposedSchedule && detailsToUse.proposedSchedule.sessions) {
         try {
           await createScheduleFromProposal(detailsToUse.proposedSchedule, newGoal);
-          Alert.alert('Success!', 'Goal and schedule created successfully!');
+          console.log('Goal and schedule created successfully');
         } catch (scheduleError) {
           console.error('Error creating schedule:', scheduleError);
-          Alert.alert('Success!', 'Goal created successfully! (Schedule creation will be added later)');
+          // Continue silently - goal was created successfully
         }
-      } else {
-        Alert.alert('Success!', 'Goal created successfully!');
       }
-      
-      // Reset state
-      setGoalDetails(null);
-      setModalVisible(false);
-      setSelectedCategory(null);
       
       // Refresh goals
       await fetchGoals();

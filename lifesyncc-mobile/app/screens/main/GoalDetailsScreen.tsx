@@ -101,6 +101,9 @@ export const GoalDetailsScreen: React.FC = () => {
         ? { progress: newValue }
         : { currentValue: newValue };
 
+      console.log('Updating progress for goal:', goal._id || goal.id);
+      console.log('Progress data:', progressData);
+
       const updatedGoal = await goalService.updateProgress(goal._id || goal.id, progressData);
       
       // Update the local goal state with the response from the API
@@ -114,9 +117,16 @@ export const GoalDetailsScreen: React.FC = () => {
       
       // Refresh analytics
       await fetchGoalAnalytics();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update progress');
+    } catch (error: any) {
       console.error('Error updating progress:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Show more detailed error message
+      Alert.alert(
+        'Error', 
+        `Failed to update progress: ${error.message || 'Unknown error'}`
+      );
     }
   };
 

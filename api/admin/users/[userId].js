@@ -59,10 +59,19 @@ module.exports = async function handler(req, res) {
 
       // Get user's goals
       const goals = await Goal.find({ userId: user._id });
+      
+      // Format goals to ensure consistent ID field
+      const formattedGoals = goals.map(goal => ({
+        ...goal.toObject(),
+        id: goal._id.toString(),
+        progress: goal.progress || 0,
+        createdAt: goal.createdAt,
+        updatedAt: goal.updatedAt
+      }));
 
       res.status(200).json({
         user,
-        goals,
+        goals: formattedGoals,
         stats: {
           totalGoals: goals.length,
           completedGoals: goals.filter(g => g.completed).length,
