@@ -104,6 +104,9 @@ app.delete('/api/goals/:id', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalDetailRoute)(req, res);
 });
+// Analytics summary route MUST come before :id routes to avoid route conflicts
+app.get('/api/goals/analytics/summary', wrapHandler(require('./api/goals/analytics/summary')));
+
 app.put('/api/goals/:id/progress', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(goalProgressRoute)(req, res);
@@ -112,7 +115,6 @@ app.get('/api/goals/:id/analytics', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(require('./api/goals/[id]/analytics'))(req, res);
 });
-app.get('/api/goals/analytics/summary', wrapHandler(require('./api/goals/analytics/summary'))(req, res));
 
 // Feedback routes
 app.get('/api/feedback', wrapHandler(feedbackRoute));
