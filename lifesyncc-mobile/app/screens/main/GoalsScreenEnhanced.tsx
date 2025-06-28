@@ -186,43 +186,45 @@ export const GoalsScreenEnhanced: React.FC = () => {
     }
   };
 
-  const handleAcceptSchedule = async () => {
-    if (!goalDetails) return;
+  const handleAcceptSchedule = async (updatedDetails?: any) => {
+    // Use updated details if provided (from edit mode), otherwise use current goalDetails
+    const detailsToUse = updatedDetails || goalDetails;
+    if (!detailsToUse) return;
     
     setIsCreatingGoal(true);
     
     try {
       // Validate required fields
-      if (!goalDetails.title || !goalDetails.title.trim()) {
+      if (!detailsToUse.title || !detailsToUse.title.trim()) {
         Alert.alert('Error', 'Please enter a goal title');
         setIsCreatingGoal(false);
         return;
       }
       
-      if (!goalDetails.description || !goalDetails.description.trim()) {
+      if (!detailsToUse.description || !detailsToUse.description.trim()) {
         Alert.alert('Error', 'Please enter a goal description');
         setIsCreatingGoal(false);
         return;
       }
       
       // Prepare goal data
-      const scheduleStartDate = goalDetails.scheduleStartDate ? new Date(goalDetails.scheduleStartDate) : new Date();
-      const scheduleEndDate = goalDetails.scheduleEndDate ? new Date(goalDetails.scheduleEndDate) : (() => {
+      const scheduleStartDate = detailsToUse.scheduleStartDate ? new Date(detailsToUse.scheduleStartDate) : new Date();
+      const scheduleEndDate = detailsToUse.scheduleEndDate ? new Date(detailsToUse.scheduleEndDate) : (() => {
         const date = new Date();
         date.setDate(date.getDate() + 84); // 12 weeks default
         return date;
       })();
       
       const goalData = {
-        category: goalDetails.category,
-        title: goalDetails.title,
-        description: goalDetails.description,
-        type: goalDetails.type,
-        priority: goalDetails.priority,
-        targetValue: goalDetails.targetValue,
-        currentValue: goalDetails.currentValue || 0,
-        unit: goalDetails.unit || '',
-        dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
+        category: detailsToUse.category,
+        title: detailsToUse.title,
+        description: detailsToUse.description,
+        type: detailsToUse.type,
+        priority: detailsToUse.priority,
+        targetValue: detailsToUse.targetValue,
+        currentValue: detailsToUse.currentValue || 0,
+        unit: detailsToUse.unit || '',
+        dueDate: detailsToUse.dueDate ? new Date(detailsToUse.dueDate) : undefined,
         completed: false,
         scheduleStartDate: scheduleStartDate,
         scheduleEndDate: scheduleEndDate
@@ -238,9 +240,9 @@ export const GoalsScreenEnhanced: React.FC = () => {
       }
 
       // Create schedule entries if proposedSchedule exists
-      if (goalDetails.proposedSchedule && goalDetails.proposedSchedule.sessions) {
+      if (detailsToUse.proposedSchedule && detailsToUse.proposedSchedule.sessions) {
         try {
-          await createScheduleFromProposal(goalDetails.proposedSchedule, newGoal);
+          await createScheduleFromProposal(detailsToUse.proposedSchedule, newGoal);
           Alert.alert('Success!', 'Goal and schedule created successfully!');
         } catch (scheduleError) {
           console.error('Error creating schedule:', scheduleError);

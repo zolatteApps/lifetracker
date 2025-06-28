@@ -49,7 +49,7 @@ interface SchedulePreviewModalProps {
     };
     isManualMode?: boolean;
   } | null;
-  onAccept: () => void;
+  onAccept: (updatedDetails?: any) => void;
   onModify: () => void;
   onCancel: () => void;
   onUpdate?: (updatedDetails: any) => void;
@@ -274,13 +274,11 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
       onUpdate(updatedDetails);
     }
     
-    // If this is manual mode (creating a new goal), trigger accept after saving
+    // If this is manual mode (creating a new goal), trigger accept with updated details
     if (goalDetails?.isManualMode) {
       setIsEditMode(false);
-      // Small delay to ensure state updates
-      setTimeout(() => {
-        onAccept();
-      }, 100);
+      // Pass the updated details directly to onAccept
+      onAccept(updatedDetails);
     } else {
       setIsEditMode(false);
     }
