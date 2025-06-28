@@ -10,7 +10,8 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Switch
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext-mongodb';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +31,7 @@ export const DashboardScreen: React.FC = () => {
   const [showSchedulePreview, setShowSchedulePreview] = useState(false);
   const [goalDetails, setGoalDetails] = useState<any>(null);
   const [isCreatingGoal, setIsCreatingGoal] = useState(false);
+  const [autoGenerate, setAutoGenerate] = useState(true);
 
 
   const fetchGoals = async () => {
@@ -326,12 +328,9 @@ export const DashboardScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'dhruv'}!</Text>
-            <Text style={styles.subtitle}>Track your progress across all life areas</Text>
             
             <View style={styles.goalSection}>
               <Text style={styles.goalTitle}>What's your goal?</Text>
-              <Text style={styles.goalSubtitle}>AI will automatically categorize it for you</Text>
               
               <TextInput
                 style={styles.goalInput}
@@ -344,30 +343,27 @@ export const DashboardScreen: React.FC = () => {
                 editable={!isProcessing}
               />
               
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[styles.autoCreateButton, isProcessing && styles.achieveButtonDisabled]}
-                  onPress={handleAutoCreate}
-                  disabled={isProcessing || !goalText.trim()}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="sparkles" size={20} color="#fff" />
-                      <Text style={styles.autoCreateButtonText}>Auto Create</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.manualCreateButton, !goalText.trim() && styles.manualCreateButtonDisabled]}
-                  onPress={handleManualCreate}
-                  disabled={!goalText.trim()}
-                >
-                  <Ionicons name="create-outline" size={20} color="#7C3AED" />
-                  <Text style={styles.manualCreateButtonText}>Manual Create</Text>
-                </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.createGoalButton, isProcessing && styles.createGoalButtonDisabled]}
+                onPress={autoGenerate ? handleAutoCreate : handleManualCreate}
+                disabled={isProcessing || !goalText.trim()}
+              >
+                {isProcessing ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.createGoalButtonText}>Continue</Text>
+                )}
+              </TouchableOpacity>
+              
+              <View style={styles.toggleContainer}>
+                <Text style={styles.toggleLabel}>✨ Auto generate schedule</Text>
+                <Switch
+                  value={autoGenerate}
+                  onValueChange={setAutoGenerate}
+                  trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+                  thumbColor={autoGenerate ? '#7C3AED' : '#9CA3AF'}
+                  ios_backgroundColor="#E5E7EB"
+                />
               </View>
             </View>
           </View>
@@ -447,6 +443,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 100,
   },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginBottom: 16,
+    gap: 8,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
+  },
   goalInput: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -456,7 +465,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     minHeight: 140,
     maxHeight: 160,
-    marginBottom: 28,
+    marginBottom: 20,
     textAlignVertical: 'top',
     shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 4 },
@@ -533,5 +542,29 @@ const styles = StyleSheet.create({
   manualCreateButtonDisabled: {
     borderColor: '#E5E7EB',
     opacity: 0.5,
+  },
+  createGoalButton: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+    width: '100%',
+    marginBottom: 16,
+  },
+  createGoalButtonDisabled: {
+    backgroundColor: '#C4B5FD',
+    shadowOpacity: 0.1,
+  },
+  createGoalButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });
