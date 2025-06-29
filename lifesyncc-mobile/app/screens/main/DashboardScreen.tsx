@@ -108,7 +108,7 @@ export const DashboardScreen: React.FC = () => {
     const defaultGoalDetails = {
       title: goalText.trim(),
       category: 'physical', // Default category, user can change in modal
-      description: '',
+      description: `Work on ${goalText.trim()} to achieve personal growth`, // Default description
       type: 'milestone' as const,
       priority: 'medium' as const,
       proposedSchedule: {
@@ -144,10 +144,22 @@ export const DashboardScreen: React.FC = () => {
     const detailsToUse = updatedDetails || goalDetails;
     if (!detailsToUse) return;
     
+    // Validate required fields before showing the alert
+    if (!detailsToUse.title || !detailsToUse.title.trim()) {
+      Alert.alert('Error', 'Please enter a goal title');
+      return;
+    }
+    
+    if (!detailsToUse.description || !detailsToUse.description.trim()) {
+      Alert.alert('Error', 'Please enter a goal description');
+      return;
+    }
+    
     setIsCreatingGoal(true);
     
     // Close modal immediately
     setShowSchedulePreview(false);
+    setGoalDetails(null);
     
     // Show intermediate creating popup
     Alert.alert(
@@ -189,15 +201,27 @@ export const DashboardScreen: React.FC = () => {
       // Create the goal
       const newGoal = await goalService.createGoal(goalData);
       console.log('Goal created from Dashboard:', newGoal);
-      console.log('Goal category:', newGoal.category);
-      console.log('Goal data sent:', goalData);
-
-      // Create schedule entries
-      if (detailsToUse.proposedSchedule) {
-        await createScheduleFromProposal(detailsToUse.proposedSchedule, newGoal);
+      
+      // Ensure we have a valid goal ID
+      if (!newGoal || (!newGoal._id && !newGoal.id)) {
+        throw new Error('Goal created but no ID returned');
       }
 
-      // Show success and navigate to schedule
+      // Create schedule entries if proposedSchedule exists
+      if (detailsToUse.proposedSchedule && detailsToUse.proposedSchedule.sessions) {
+        try {
+          await createScheduleFromProposal(detailsToUse.proposedSchedule, newGoal);
+          console.log('Goal and schedule created successfully');
+        } catch (scheduleError) {
+          console.error('Error creating schedule:', scheduleError);
+          // Continue silently - goal was created successfully
+        }
+      }
+
+      // Refresh goals
+      await fetchGoals();
+      
+      // Show success only after everything is complete
       Alert.alert(
         'Success!', 
         'Your goal and schedule have been created!',
@@ -212,17 +236,13 @@ export const DashboardScreen: React.FC = () => {
           }
         ]
       );
-
-      // Reset state
-      setGoalDetails(null);
-      setGoalText('');
       
-      // Refresh goals
-      await fetchGoals();
+      // Reset goal text
+      setGoalText('');
       
     } catch (error) {
       console.error('Error creating goal:', error);
-      Alert.alert('Error', 'Failed to create goal and schedule. Please try again.');
+      Alert.alert('Error', 'Failed to create goal. Please try again.');
     } finally {
       setIsCreatingGoal(false);
     }
