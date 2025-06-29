@@ -57,9 +57,10 @@ export const GoalsScreenEnhanced: React.FC = () => {
 
   const fetchGoals = async () => {
     try {
-      console.log('Fetching goals...');
+      console.log('GoalsScreen: Fetching goals...');
       const fetchedGoals = await goalService.getGoals();
-      console.log('Fetched goals:', fetchedGoals);
+      console.log('GoalsScreen: Fetched goals count:', fetchedGoals.length);
+      console.log('GoalsScreen: Goals categories:', fetchedGoals.map(g => ({ id: g._id || g.id, category: g.category, title: g.title })));
       setGoals(fetchedGoals);
       await goalService.saveGoalsOffline(fetchedGoals);
       

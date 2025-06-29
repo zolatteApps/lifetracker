@@ -131,9 +131,13 @@ const GoalDetailsModal: React.FC<GoalDetailsModalProps> = ({
     try {
       const token = localStorage.getItem('token');
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const goalId = goal.id || goal._id;
+      
+      console.log('Deleting goal with ID:', goalId);
+      console.log('Using token:', token);
       
       const response = await fetch(
-        `${apiUrl}/api/goals/${goal.id || goal._id}`,
+        `${apiUrl}/api/goals/${goalId}`,
         {
           method: 'DELETE',
           headers: {
@@ -149,8 +153,9 @@ const GoalDetailsModal: React.FC<GoalDetailsModalProps> = ({
         }
         onClose();
       } else {
-        console.error('Failed to delete goal');
-        alert('Failed to delete goal. Please try again.');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to delete goal:', response.status, errorData);
+        alert(`Failed to delete goal: ${errorData.error || response.statusText || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting goal:', error);

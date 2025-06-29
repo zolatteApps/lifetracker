@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     return verifyToken(async (req, res) => {
       try {
         console.log('Categorize request received:', req.body);
-        const { goalText } = req.body;
+        const { goalText, suggestedCategory } = req.body;
 
         if (!goalText || typeof goalText !== 'string') {
           return res.status(400).json({ error: 'Goal text is required' });
@@ -43,6 +43,7 @@ module.exports = async (req, res) => {
           messages: [{
             role: 'user',
             content: `Analyze this goal and provide structured information: "${goalText}"
+${suggestedCategory ? `The user has suggested this might be a "${suggestedCategory}" goal. Use this as a strong hint but override if the goal clearly belongs to a different category.` : ''}
 
 Provide a JSON response with the following fields:
 {
