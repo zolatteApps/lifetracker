@@ -139,8 +139,15 @@ export const DashboardScreen: React.FC = () => {
     setShowSchedulePreview(true);
   };
 
-  const handleAcceptSchedule = async () => {
+  const handleAcceptSchedule = async (updatedDetails?: any) => {
+    // Use updated details if provided (from edit mode), otherwise use current goalDetails
+    const detailsToUse = updatedDetails || goalDetails;
+    if (!detailsToUse) return;
+    
     setIsCreatingGoal(true);
+    
+    // Close modal immediately
+    setShowSchedulePreview(false);
     
     // Show intermediate creating popup
     Alert.alert(
@@ -157,23 +164,23 @@ export const DashboardScreen: React.FC = () => {
     
     try {
       // Prepare goal data
-      const scheduleStartDate = goalDetails.scheduleStartDate ? new Date(goalDetails.scheduleStartDate) : new Date();
-      const scheduleEndDate = goalDetails.scheduleEndDate ? new Date(goalDetails.scheduleEndDate) : (() => {
+      const scheduleStartDate = detailsToUse.scheduleStartDate ? new Date(detailsToUse.scheduleStartDate) : new Date();
+      const scheduleEndDate = detailsToUse.scheduleEndDate ? new Date(detailsToUse.scheduleEndDate) : (() => {
         const date = new Date();
         date.setDate(date.getDate() + 84); // 12 weeks default
         return date;
       })();
       
       const goalData = {
-        category: goalDetails.category,
-        title: goalDetails.title,
-        description: goalDetails.description,
-        type: goalDetails.type,
-        priority: goalDetails.priority,
-        targetValue: goalDetails.targetValue,
-        currentValue: goalDetails.currentValue || 0,
-        unit: goalDetails.unit || '',
-        dueDate: goalDetails.dueDate ? new Date(goalDetails.dueDate) : undefined,
+        category: detailsToUse.category,
+        title: detailsToUse.title,
+        description: detailsToUse.description,
+        type: detailsToUse.type,
+        priority: detailsToUse.priority,
+        targetValue: detailsToUse.targetValue,
+        currentValue: detailsToUse.currentValue || 0,
+        unit: detailsToUse.unit || '',
+        dueDate: detailsToUse.dueDate ? new Date(detailsToUse.dueDate) : undefined,
         completed: false,
         scheduleStartDate: scheduleStartDate,
         scheduleEndDate: scheduleEndDate
@@ -186,8 +193,8 @@ export const DashboardScreen: React.FC = () => {
       console.log('Goal data sent:', goalData);
 
       // Create schedule entries
-      if (goalDetails.proposedSchedule) {
-        await createScheduleFromProposal(goalDetails.proposedSchedule, newGoal);
+      if (detailsToUse.proposedSchedule) {
+        await createScheduleFromProposal(detailsToUse.proposedSchedule, newGoal);
       }
 
       // Show success and navigate to schedule
@@ -207,7 +214,6 @@ export const DashboardScreen: React.FC = () => {
       );
 
       // Reset state
-      setShowSchedulePreview(false);
       setGoalDetails(null);
       setGoalText('');
       
