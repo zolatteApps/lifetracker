@@ -40,6 +40,9 @@ const feedbackRoute = require('./api/feedback/index');
 const scheduleGenerateRoute = require('./api/schedule/generate');
 const scheduleRoute = require('./api/schedule/index');
 
+// Health routes
+const dbStatusRoute = require('./api/health/db-status');
+
 // Health check route
 const healthCheckRoute = require('./api/health/check');
 
@@ -135,6 +138,9 @@ app.put('/api/schedule/:id', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(scheduleRoute)(req, res);
 });
+
+// Health routes
+app.get('/api/health/db-status', wrapHandler(dbStatusRoute));
 
 // Health check route
 app.get('/api/health', wrapHandler(healthCheckRoute));
