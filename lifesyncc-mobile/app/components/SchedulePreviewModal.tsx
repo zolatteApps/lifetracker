@@ -87,7 +87,7 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
   loading = false,
 }) => {
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editedDetails, setEditedDetails] = useState<any>(null);
+  const [editedDetails, setEditedDetails] = useState<any>(goalDetails ? JSON.parse(JSON.stringify(goalDetails)) : null);
   const [showTimePicker, setShowTimePicker] = useState<number | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState<ScheduleSession>({
@@ -424,7 +424,8 @@ export const SchedulePreviewModal: React.FC<SchedulePreviewModalProps> = ({
     setEditedDetails(newDetails);
   };
 
-  if (!goalDetails || !goalDetails.proposedSchedule || !editedDetails) {
+  // Early return if data is not ready
+  if (!goalDetails || !editedDetails || !editedDetails.proposedSchedule) {
     return null;
   }
 
