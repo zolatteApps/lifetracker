@@ -23,7 +23,23 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    await connectDB();
+    // Ensure database connection with retry
+    let dbConnected = false;
+    let retries = 3;
+    while (!dbConnected && retries > 0) {
+      try {
+        await connectDB();
+        dbConnected = true;
+      } catch (dbError) {
+        retries--;
+        console.error(`Database connection failed (${3 - retries}/3):`, dbError.message);
+        if (retries === 0) {
+          throw dbError;
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
     
     const { email, password } = req.body;
 
@@ -46,9 +62,14 @@ module.exports = async function handler(req, res) {
     }
 
     // Create JWT token
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    if (jwtSecret === 'your-secret-key') {
+      console.warn('WARNING: Using default JWT secret. Please set JWT_SECRET environment variable.');
+    }
+    
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
+      jwtSecret,
       { expiresIn: '7d' }
     );
 

@@ -40,6 +40,9 @@ const feedbackRoute = require('./api/feedback/index');
 const scheduleGenerateRoute = require('./api/schedule/generate');
 const scheduleRoute = require('./api/schedule/index');
 
+// Health check route
+const healthCheckRoute = require('./api/health/check');
+
 // Convert Vercel serverless functions to Express routes
 const wrapHandler = (handler) => async (req, res) => {
   try {
@@ -132,6 +135,9 @@ app.put('/api/schedule/:id', (req, res) => {
   req.query.id = req.params.id;
   wrapHandler(scheduleRoute)(req, res);
 });
+
+// Health check route
+app.get('/api/health', wrapHandler(healthCheckRoute));
 
 app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`);

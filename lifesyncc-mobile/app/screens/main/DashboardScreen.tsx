@@ -32,7 +32,6 @@ export const DashboardScreen: React.FC = () => {
   const [goalDetails, setGoalDetails] = useState<any>(null);
   const [isCreatingGoal, setIsCreatingGoal] = useState(false);
   const [autoGenerate, setAutoGenerate] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<'physical' | 'mental' | 'financial' | 'social'>('physical');
 
 
   const fetchGoals = async () => {
@@ -76,8 +75,7 @@ export const DashboardScreen: React.FC = () => {
           'Authorization': `Bearer ${await goalService.getToken()}`
         },
         body: JSON.stringify({ 
-          goalText: goalText.trim(),
-          suggestedCategory: selectedCategory 
+          goalText: goalText.trim()
         })
       });
 
@@ -109,7 +107,7 @@ export const DashboardScreen: React.FC = () => {
     // Create default goal structure for manual mode
     const defaultGoalDetails = {
       title: goalText.trim(),
-      category: selectedCategory,
+      category: 'physical', // Default category, user can change in modal
       description: '',
       type: 'milestone' as const,
       priority: 'medium' as const,
@@ -460,67 +458,6 @@ export const DashboardScreen: React.FC = () => {
                 editable={!isProcessing}
               />
               
-              <View style={styles.categoryContainer}>
-                <Text style={styles.categoryLabel}>Select Category:</Text>
-                <View style={styles.categoryOptions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.categoryOption,
-                      selectedCategory === 'physical' && styles.categoryOptionSelected
-                    ]}
-                    onPress={() => setSelectedCategory('physical')}
-                  >
-                    <Ionicons name="fitness" size={20} color={selectedCategory === 'physical' ? '#fff' : '#10B981'} />
-                    <Text style={[
-                      styles.categoryOptionText,
-                      selectedCategory === 'physical' && styles.categoryOptionTextSelected
-                    ]}>Physical</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.categoryOption,
-                      selectedCategory === 'mental' && styles.categoryOptionSelected
-                    ]}
-                    onPress={() => setSelectedCategory('mental')}
-                  >
-                    <Ionicons name="library" size={20} color={selectedCategory === 'mental' ? '#fff' : '#8B5CF6'} />
-                    <Text style={[
-                      styles.categoryOptionText,
-                      selectedCategory === 'mental' && styles.categoryOptionTextSelected
-                    ]}>Mental</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.categoryOption,
-                      selectedCategory === 'financial' && styles.categoryOptionSelected
-                    ]}
-                    onPress={() => setSelectedCategory('financial')}
-                  >
-                    <Ionicons name="cash" size={20} color={selectedCategory === 'financial' ? '#fff' : '#F59E0B'} />
-                    <Text style={[
-                      styles.categoryOptionText,
-                      selectedCategory === 'financial' && styles.categoryOptionTextSelected
-                    ]}>Financial</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.categoryOption,
-                      selectedCategory === 'social' && styles.categoryOptionSelected
-                    ]}
-                    onPress={() => setSelectedCategory('social')}
-                  >
-                    <Ionicons name="people" size={20} color={selectedCategory === 'social' ? '#fff' : '#3B82F6'} />
-                    <Text style={[
-                      styles.categoryOptionText,
-                      selectedCategory === 'social' && styles.categoryOptionTextSelected
-                    ]}>Social</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
               <TouchableOpacity
                 style={[styles.createGoalButton, isProcessing && styles.createGoalButtonDisabled]}
                 onPress={autoGenerate ? handleAutoCreate : handleManualCreate}
@@ -744,44 +681,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
-  },
-  categoryContainer: {
-    marginVertical: 16,
-  },
-  categoryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
-  },
-  categoryOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  categoryOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    gap: 6,
-  },
-  categoryOptionSelected: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
-  },
-  categoryOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  categoryOptionTextSelected: {
-    color: '#FFFFFF',
   },
 });
