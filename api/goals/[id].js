@@ -19,6 +19,10 @@ const handler = async (req, res) => {
   }
 
   const { id } = req.query;
+  
+  console.log('Goal API - Method:', req.method);
+  console.log('Goal API - ID:', id);
+  console.log('Goal API - User ID:', req.userId);
 
   try {
     await connectDB();
@@ -26,6 +30,7 @@ const handler = async (req, res) => {
     // Check if user is admin
     const currentUser = await User.findById(req.userId);
     const isAdmin = currentUser && currentUser.role === 'admin';
+    console.log('Goal API - Is Admin:', isAdmin);
 
     // Check if goal exists
     let goal;
@@ -38,8 +43,11 @@ const handler = async (req, res) => {
     }
     
     if (!goal) {
+      console.log('Goal API - Goal not found for ID:', id);
       return res.status(404).json({ error: 'Goal not found' });
     }
+    
+    console.log('Goal API - Found goal:', goal._id);
 
     switch (req.method) {
       case 'GET':
